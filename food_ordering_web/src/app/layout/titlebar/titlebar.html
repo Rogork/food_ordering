@@ -1,0 +1,40 @@
+<header class="sticky top-0 z-40 bg-neutral-900/90 backdrop-blur border-b border-neutral-800">
+  <div class="mx-auto max-w-7xl px-3 sm:px-4">
+    <div class="h-12 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <!-- Mobile: open sidebar -->
+        <button id="openSidebar" class="inline-flex items-center justify-center rounded-md p-2 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500 sm:hidden" aria-label="Open navigation">
+          <!-- icon -->
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <span class="text-xs uppercase tracking-wider text-neutral-300">Food Ordering</span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button tuiButton (click)="showJoinDialog.set(true)" size="s" appearance="flat-destructive" class="border-orange-600/60 text-sm font-medium text-orange-400 hover:bg-orange-600/10 focus:outline-none focus:ring-2 focus:ring-orange-500">
+          <tui-icon icon="@tui.log-in" class="mr-2" />
+          Join Group
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<ng-template [tuiDialogOptions]="{label: 'Join Group', size: 's'}" [(tuiDialog)]="showJoinDialog">
+  <div class="flex flex-col">
+    <p>Enter the code of the group you want to join below:</p>
+    <tui-textfield [tuiTextfieldCleaner]="true">
+      <label tuiLabel>Group Code</label>
+      <input tuiTextField tuiAutoFocus [(ngModel)]="joinCode" />
+    </tui-textfield>
+    <div class="flex flex-row-reverse">
+      <tui-loader [overlay]="true" [showLoader]="isJoining()">
+        <button size="m" [disabled]="joinCode().length === 0" tuiButton appearance="primary" (click)="joinGroup();">
+          JOIN
+        </button>
+      </tui-loader>
+    </div>
+  </div>
+</ng-template>

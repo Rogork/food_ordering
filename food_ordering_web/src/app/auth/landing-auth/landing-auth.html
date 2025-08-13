@@ -1,0 +1,76 @@
+<div class="shell" [class.loading]="loading()">
+  <header>
+    <div class="brand">Food Ordering</div>
+    @if(step() === 'email') {
+    <div class="subtitle">Sign in or create an account</div>
+    } @else if(step() === 'password' && exists()) {
+    <div class="subtitle">Welcome back — enter your password</div>
+    } @else if(step() === 'password' && !exists()) {
+    <div class="subtitle">Create a password to finish setting up your account</div>
+    }
+  </header>
+
+  @if(step() === 'email') {
+  <form [formGroup]="emailForm" (ngSubmit)="onEmailSubmit()">
+    <div class="row">
+      <tui-textfield>
+        <label tuiLabel>Email</label>
+        <input formControlName="email" tuiTextfieldType="email" [tuiTextfieldCleaner]="true" [autofocus]="true" placeholder="you@company.com">
+      </tui-textfield>
+      @if (emailForm.controls.email.touched && emailForm.controls.email.invalid) {
+      <div class="error">
+        @if (emailForm.controls.email.errors?.['required']) { <span>Email is required.</span> }
+        @if (emailForm.controls.email.errors?.['email']) { <span>Enter a valid email.</span> }
+        @if (emailForm.controls.email.errors?.['maxlength']) { <span>Email is too long.</span> }
+      </div>
+      }
+    </div>
+    <div class="actions">
+      <tui-loader class="w-full" [showLoader]="loading()">
+        <button class="w-full" tuiButton appearance="primary" type="submit" [disabled]="emailForm.invalid || loading()">
+          Continue
+        </button>
+      </tui-loader>
+    </div>
+  </form>
+  } @else {
+  <form [formGroup]="passwordForm" (ngSubmit)="onPasswordSubmit()">
+    <div class="row">
+      <tui-textfield>
+        <label tuiLabel>Email</label>
+        <input type="email" [readOnly]="true" [value]="emailForm.value.email">
+      </tui-textfield>
+    </div>
+    <div class="row">
+      <tui-textfield>
+        <label tuiLabel>@if(exists()) { Password } @else { Create Password }</label>
+        <input tuiTextfield type="password" formControlName="password" [autofocus]="true" placeholder="Your password">
+      </tui-textfield>
+      @if(passwordForm.controls.password.touched && passwordForm.controls.password.invalid) {
+      <div class="error">
+        @if(passwordForm.controls.password.errors?.['required']){ <span>Password is required.</span> }
+        @if(passwordForm.controls.password.errors?.['minlength']){ <span>Minimum 6 characters.</span> }
+      </div>
+      }
+    </div>
+
+    <div class="actions">
+      <button class="backlink" type="button" (click)="backToEmail()" [disabled]="loading()">
+        Use another email
+      </button>
+      <div style="display:flex; gap:8px; align-items:center">
+        @if(exists()) {
+        <button tuiButton appearance="flat" type="button" (click)="onForgot()" [disabled]="loading()">
+          Forgot password
+        </button>
+        }
+        <tui-loader [showLoader]="loading()">
+          <button tuiButton appearance="primary" type="submit" [disabled]="passwordForm.invalid || loading()">
+            <span>{{ exists() ? 'Sign in' : 'Create account' }}</span>
+          </button>
+        </tui-loader>
+      </div>
+    </div>
+  </form>
+  }
+</div>

@@ -1,0 +1,110 @@
+/* src/app/landing-auth.component.less */
+@radius: 20px;
+
+:host {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  background: var(--tui-base-02);
+  padding: 24px;
+  color: var(--tui-text-01);
+}
+
+.shell {
+  width: 100%;
+  max-width: 420px;
+  background: var(--tui-base-01);
+  border: 1px solid var(--tui-border);
+  border-radius: @radius;
+  box-shadow: var(--tui-shadow);
+  padding: 28px;
+
+  /* subtle inner separation on very dark bg */
+  backdrop-filter: saturate(120%) blur(0.5px);
+}
+
+header {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+  text-align: center;
+
+  .brand {
+    font-weight: 700;
+    font-size: 24px;
+    letter-spacing: .4px;
+    color: var(--tui-text-01);
+  }
+
+  .subtitle {
+    color: var(--tui-text-03);
+    font-size: 14px;
+  }
+}
+
+form {
+  display: grid;
+  gap: 16px;
+}
+
+.row {
+  display: grid;
+  gap: 8px;
+}
+
+/* Buttons use Taiga appearances; just ensure spacing/hover states read well */
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+
+  button[tuiButton] {
+    width: 100%;
+  }
+}
+
+/* Link-style button */
+.backlink {
+  background: transparent;
+  border: none;
+  color: var(--tui-primary);
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+
+  &:hover {
+    color: var(--tui-primary-hover);
+  }
+
+  &:active {
+    color: var(--tui-primary-active);
+  }
+}
+
+/* Validation */
+.error {
+  color: var(--tui-negative);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+/* Optional: refine input chrome on dark */
+[tuiWrapper][data-appearance='textfield'] {
+  background: var(--tui-base-03);
+  border-color: var(--tui-border);
+
+  &:hover {
+    border-color: var(--tui-border-hover);
+  }
+
+  &:focus-within {
+    box-shadow: 0 0 0 3px fade(#ff6a00, 20%);
+  }
+}
+
+/* Loader contrasts on dark */
+tui-loader[size='s'] {
+  --tui-text-01: #ffffff;
+}

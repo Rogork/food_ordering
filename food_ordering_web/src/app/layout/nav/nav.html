@@ -1,0 +1,60 @@
+<aside id="sidebar" class="fixed inset-y-12 left-0 z-40 w-64 -translate-x-full border-r border-neutral-800 bg-neutral-900/95 backdrop-blur transition-transform sm:sticky sm:top-12 sm:translate-x-0 sm:h-[calc(100dvh-3rem)] h-[calc(100dvh-3rem)]" aria-label="Sidebar Navigation">
+  <div class="flex h-full flex-col">
+    <nav class="px-3 py-3">
+      <ul class="space-y-1 text-sm">
+        <li>
+          <a [routerLink]="['/']" class="group flex items-center gap-2 rounded-md px-3 py-2 hover:bg-neutral-800/70 aria-[current=page]:bg-neutral-800 aria-[current=page]:text-orange-400" aria-current="page">
+            <span>Home</span>
+          </a>
+        </li>
+
+        <li class="pt-2">
+          <details class="group [&_summary::-webkit-details-marker]:hidden open:">
+            <summary class="flex cursor-pointer items-center justify-between rounded-md px-3 py-2 hover:bg-neutral-800/70">
+              <span class="font-medium">Orders</span>
+              <svg class="h-4 w-4 transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 011.08 1.04l-4.25 4.25a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+              </svg>
+            </summary>
+            <ul class="mt-1 space-y-1 ps-4">
+              <li>
+                <a [routerLink]="['/orders/active']" class="block rounded-md px-3 py-1.5 text-neutral-300 hover:bg-neutral-800/70 hover:text-orange-400">
+                  Active Orders
+                </a>
+              </li>
+              <li>
+                <a [routerLink]="['/orders/history']" class="block rounded-md px-3 py-1.5 text-neutral-300 hover:bg-neutral-800/70 hover:text-orange-400">
+                  Orders History
+                </a>
+              </li>
+            </ul>
+          </details>
+        </li>
+
+        <li class="pt-2">
+          <a [routerLink]="['/restaurants']" class="group flex items-center gap-2 rounded-md px-3 py-2 hover:bg-neutral-800/70">
+            <span>Restaurants</span>
+          </a>
+        </li>
+
+        <li>
+          <a [routerLink]="['/groups']" class="group flex items-center gap-2 rounded-md px-3 py-2 hover:bg-neutral-800/70">
+            <span>Groups</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="mt-auto border-t border-neutral-800 px-3 py-3">
+      <div class="text-xs uppercase tracking-wider text-neutral-400 mb-2">Account</div>
+      <a [routerLink]="['/profile']" class="block rounded-md px-3 py-2 text-sm hover:bg-neutral-800/70">
+        <tui-icon icon="@tui.user-pen" class="mr-2" />
+        Edit Profile
+      </a>
+      <button (click)="logout()" class="mt-1 w-full rounded-md bg-neutral-800/70 px-3 py-2 text-left text-sm hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500">
+        <tui-icon icon="@tui.log-out" class="mr-2" />
+        Logout
+      </button>
+    </div>
+  </div>
+</aside>

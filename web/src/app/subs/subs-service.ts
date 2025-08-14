@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { APIService } from '../api-service';
+import { APIService } from '../shared/api-service';
 import { map } from 'rxjs';
 import { TuiAlertService } from '@taiga-ui/core';
 

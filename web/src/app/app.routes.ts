@@ -1,17 +1,17 @@
-import { LayoutComponent } from './layout/layout.component';
+import { LayoutComponent } from './shared/layout/layout.component';
 import { Routes } from '@angular/router';
-import { LandingAuth } from './auth/landing-auth/landing-auth';
-import { isAuthenticated } from './auth/auth-guard';
+import { LandingAuth } from './shared/auth/landing-auth/landing-auth';
+import { isAuthenticated, isNotAuthenticated } from './shared/auth/auth-guards-and-resolvers';
 import { Home } from './home/home';
 
 export const routes: Routes = [
-  { path: 'auth', component: LandingAuth },
+  { path: 'auth', canActivate: [isNotAuthenticated], component: LandingAuth },
   {
     path: '',
     canActivate: [isAuthenticated],
     component: LayoutComponent,
     children: [
-      { path: '', component: Home }
+      { path: '', component: Home },
     ],
   },
 ];

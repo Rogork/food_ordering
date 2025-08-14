@@ -14,5 +14,5 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withInMemoryScrolling({scrollPositionRestoration: 'top'})),
     provideClientHydration(withEventReplay()),
     provideEventPlugins(),
-  ]
+    ]
 };

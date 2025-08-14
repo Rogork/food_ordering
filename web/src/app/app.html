@@ -1,5 +1,14 @@
 <tui-root [attr.tuiTheme]="'dark'">
+  @if(isReady()) {
   <router-outlet></router-outlet>
+  } @else {
+  <div class="min-h-screen min-w-screen flex flex-col justify-between items-center">
+    <div class="m-auto text-center">
+      <h1 class="text-xl -mt-8">Big Foods</h1>
+      <tui-loader size="xl"></tui-loader>
+    </div>
+  </div>
+  }
   <ng-container ngProjectAs="tuiOverContent">
   </ng-container>
   <ng-container ngProjectAs="tuiOverDialogs">

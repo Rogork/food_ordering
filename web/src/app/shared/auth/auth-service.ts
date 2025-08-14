@@ -1,5 +1,5 @@
 import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
-import { APIService } from './../api-service';
+import { APIService } from '../shared/api-service';
 import { map, of } from 'rxjs';
 import { TuiAlertService } from '@taiga-ui/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -27,14 +27,17 @@ export class AuthService {
 
   private readonly alerts = inject(TuiAlertService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly api = inject(APIService);
+
+  constructor() {}
+
   initialized = signal(false);
   currentUser = signal<IUser | null>(null);
-  constructor(private api: APIService) {}
 
   init() {
     if (this.initialized() === true || !isPlatformBrowser(this.platformId)) return of(true);
     const token = localStorage.getItem('token');
-    return this.api.requestGET<IUser>('/auth/email-exists', {}, { headers: { Authorization: `Bearer ${token}`}}).pipe(
+    return this.api.requestGET<IUser>('/auth/get-details', {}, { headers: { Authorization: `Bearer ${token}`}}).pipe(
       map(({ code, data }) => {
         if (code === 200) this.currentUser.set(data ?? null);
         this.initialized.set(true);
@@ -84,7 +87,7 @@ export class AuthService {
   logout() {
     localStorage.clear();
     this.currentUser.set(null);
-    return this.api.requestPOST<IUser>('/auth/logout').pipe(
+    return this.api.requestPOST('/auth/logout').pipe(
       map(({ code, msg, data }) => {
         if (code !== 200) {
           this.alerts.open(`Error encountered while logging out: ${msg ?? 'UNSPECIFIED'}`, { label: 'Logout Error' }).subscribe();

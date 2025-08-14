@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, model, signal } from '@angular/core';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { Component, inject, model, signal } from '@angular/core';
+import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { TuiButton, TuiDialog, TuiIcon, TuiLabel, TuiLoader, TuiTextfield } from '@taiga-ui/core';
 import { TuiSelect } from '@taiga-ui/kit';
 
@@ -22,7 +22,13 @@ import { TuiSelect } from '@taiga-ui/kit';
 })
 export class Titlebar {
 
+  private readonly fb = inject(FormBuilder);
+
   constructor(){}
+
+  joinCodeForm = this.fb.group({
+    code: ''
+  })
 
   isJoining = signal(false);
   joinCode = model<string>('');

@@ -1,20 +1,20 @@
-import { Component, computed, effect, signal } from '@angular/core';
-import { APIService } from '../../api-service';
-import { TuiButton, TuiLabel, TuiLoader, tuiLoaderOptionsProvider, TuiTextfield } from '@taiga-ui/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import {
-  FormGroup,
-  FormControl,
-  NonNullableFormBuilder,
-  Validators,
-  ReactiveFormsModule,
-} from '@angular/forms';
+  TuiButton,
+  TuiIcon,
+  TuiLabel,
+  tuiLoaderOptionsProvider,
+  TuiTextfield,
+} from '@taiga-ui/core';
+import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
 import _ from 'lodash';
 import { AuthService } from '../auth-service';
 import { Router } from '@angular/router';
+import { TuiButtonLoading } from '@taiga-ui/kit';
 
 @Component({
   selector: 'app-landing-auth',
-  imports: [TuiButton, TuiLoader, TuiTextfield, TuiLabel, ReactiveFormsModule],
+  imports: [TuiButton, TuiButtonLoading, TuiTextfield, TuiLabel, TuiIcon, ReactiveFormsModule],
   templateUrl: './landing-auth.html',
   styleUrl: './landing-auth.less',
   providers: [
@@ -26,42 +26,37 @@ import { Router } from '@angular/router';
   ],
 })
 export class LandingAuth {
+  // properties
+  private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
+
   readonly step = signal<'email' | 'password'>('email');
   readonly exists = signal<boolean>(false);
   readonly loading = signal<boolean>(false);
   readonly errorMsg = signal<string | null>(null);
 
-  readonly emailForm: FormGroup<{ email: FormControl<string> }>;
+  public readonly emailForm = this.fb.group({
+    email: this.fb.control('', {
+      validators: [
+        Validators.required,
+        Validators.email,
+        Validators.maxLength(254),
+      ],
+    }),
+  });
 
-  readonly passwordForm: FormGroup<{ password: FormControl<string> }>;
+  readonly passwordForm = this.fb.group({
+    password: this.fb.control('', {
+      validators: [Validators.required, Validators.minLength(6)],
+    }),
+  });
 
-  // Optional: react to error messages (could show Taiga alerts/dialogs later)
   readonly status = computed(() => ({
     loading: this.loading(),
     error: this.errorMsg(),
   }));
 
-  constructor(
-    private fb: NonNullableFormBuilder,
-    private authService: AuthService,
-    private router: Router,
-  ) {
-    this.emailForm = this.fb.group({
-      email: this.fb.control('', {
-        validators: [
-          Validators.required,
-          Validators.email,
-          Validators.maxLength(254),
-        ],
-      }),
-    });
-
-    this.passwordForm = this.fb.group({
-      password: this.fb.control('', {
-        validators: [Validators.required, Validators.minLength(6)],
-      }),
-    });
-
+  constructor(private authService: AuthService) {
     effect(() => {
       if (this.step() === 'email') {
         this.passwordForm.reset();
@@ -72,7 +67,7 @@ export class LandingAuth {
 
   onEmailSubmit(): void {
     if (this.emailForm.invalid || this.loading()) return;
-    const email = this.emailForm.controls.email.value.trim();
+    const email = _.trim(this.emailForm.controls.email.value as string);
     this.loading.set(true);
     this.authService.emailExists(email).subscribe({
       next: (exists) => {
@@ -87,8 +82,9 @@ export class LandingAuth {
     });
   }
 
-  backToEmail(): void {
+  goBackToEmail(): void {
     this.step.set('email');
+    this.emailForm.reset();
   }
 
   onForgot(): void {
@@ -98,12 +94,11 @@ export class LandingAuth {
   onPasswordSubmit(): void {
     if (this.passwordForm.invalid || this.loading()) return;
 
-    const email = _.trim(this.emailForm.controls.email.value);
-    const password = this.passwordForm.controls.password.value;
+    const email = _.trim(this.emailForm.controls.email.value as string);
+    const password = this.passwordForm.controls.password.value as string;
 
     this.loading.set(true);
-    const op = this.exists() ? this.authService.login : this.authService.register;
-    op(email, password).subscribe({
+    (this.exists() ? this.authService.login(email, password) : this.authService.register(email, password)).subscribe({
       next: () => {
         this.loading.set(false);
         this.router.navigate(['/']);
@@ -111,7 +106,6 @@ export class LandingAuth {
       error: (err: { message: any }) => {
         this.loading.set(false);
         this.errorMsg.set(err?.message ?? 'Authentication failed');
-        // Surface the error under the field
         this.passwordForm.controls.password.setErrors({ server: true });
       },
     });

@@ -13,9 +13,10 @@
   @if(step() === 'email') {
   <form [formGroup]="emailForm" (ngSubmit)="onEmailSubmit()">
     <div class="row">
-      <tui-textfield>
+      <tui-textfield [tuiTextfieldCleaner]="false">
         <label tuiLabel>Email</label>
-        <input formControlName="email" tuiTextfieldType="email" [tuiTextfieldCleaner]="true" [autofocus]="true" placeholder="you@company.com">
+        <input formControlName="email" type="email" [tuiTextfieldCleaner]="false" [autofocus]="true" placeholder="you@company.com">
+        @if((emailForm.value.email || '').length > 0) { <button tuiIconButton type="button" (click)="emailForm.reset()"><tui-icon icon="@tui.x" /></button> }
       </tui-textfield>
       @if (emailForm.controls.email.touched && emailForm.controls.email.invalid) {
       <div class="error">
@@ -26,11 +27,9 @@
       }
     </div>
     <div class="actions">
-      <tui-loader class="w-full" [showLoader]="loading()">
-        <button class="w-full" tuiButton appearance="primary" type="submit" [disabled]="emailForm.invalid || loading()">
-          Continue
-        </button>
-      </tui-loader>
+      <button class="w-full" [loading]="loading()" tuiButton appearance="primary" type="submit" [disabled]="emailForm.invalid || loading()">
+        Continue
+      </button>
     </div>
   </form>
   } @else {
@@ -38,7 +37,8 @@
     <div class="row">
       <tui-textfield>
         <label tuiLabel>Email</label>
-        <input type="email" [readOnly]="true" [value]="emailForm.value.email">
+        <input tuiTextfield type="email" [readOnly]="true" [value]="emailForm.value.email">
+        <button tuiIconButton type="button" (click)="goBackToEmail()"><tui-icon icon="@tui.x" /></button>
       </tui-textfield>
     </div>
     <div class="row">
@@ -54,22 +54,15 @@
       }
     </div>
 
-    <div class="actions">
-      <button class="backlink" type="button" (click)="backToEmail()" [disabled]="loading()">
-        Use another email
+    <div class="flex sm:flex-row gap-4 justify-between flex-row-reverse">
+      @if(exists()) {
+      <button tuiButton size="m" class="flex-auto" appearance="flat" type="button" (click)="onForgot()" [disabled]="loading()">
+        Forgot password
       </button>
-      <div style="display:flex; gap:8px; align-items:center">
-        @if(exists()) {
-        <button tuiButton appearance="flat" type="button" (click)="onForgot()" [disabled]="loading()">
-          Forgot password
-        </button>
-        }
-        <tui-loader [showLoader]="loading()">
-          <button tuiButton appearance="primary" type="submit" [disabled]="passwordForm.invalid || loading()">
-            <span>{{ exists() ? 'Sign in' : 'Create account' }}</span>
-          </button>
-        </tui-loader>
-      </div>
+      }
+      <button tuiButton [loading]="loading()" size="m" class="flex-auto" appearance="primary" type="submit" [disabled]="passwordForm.invalid || loading()">
+        <span>{{ exists() ? 'Sign in' : 'Create account' }}</span>
+      </button>
     </div>
   </form>
   }

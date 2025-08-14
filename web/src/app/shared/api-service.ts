@@ -1,7 +1,6 @@
-import { inject, Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { Observable, Observer } from 'rxjs';
 import _ from 'lodash';
-import { TuiAlertService } from '@taiga-ui/core';
 
 export type APIResponse<T = void> = {
   code: number;
@@ -17,9 +16,7 @@ export type APIResponseObservable<T = void> = typeof Observable<APIResponse<T>>;
 
 const BASE_URL = 'http://localhost:4200/api';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class APIService {
   public requestGET<T = void>(url: string, parameters: { [key: string]: number | string | boolean } = {}, options: RequestInit = {}) {
     return new Observable<APIResponse<T>>((observer) => {

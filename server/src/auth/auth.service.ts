@@ -3,7 +3,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { type INewUser, UsersService } from 'src/users/users.service';
+import { type INewUser, IUser, UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +17,7 @@ export class AuthService {
     return await this.usersService.findOne(email) !== undefined;
   }
 
-  async signIn(email: string, pass: string): Promise<any> {
+  async signIn(email: string, pass: string): Promise<Partial<IUser>> {
     const user = await this.usersService.findOne(email);
     if (user?.password !== pass) {
       throw new UnauthorizedException();
@@ -26,11 +26,15 @@ export class AuthService {
     return result;
   }
 
-  async register(newUser: INewUser): Promise<any> {
+  async register(newUser: INewUser): Promise<Partial<IUser>> {
     if (await this.usersService.findOne(newUser.email) !== undefined) {
       throw new ConflictException();
     }
     const { password, ...result } = await this.usersService.insert(newUser);
     return result;
+  }
+
+  async logout(token: string) {
+    return await this.usersService.destroySession(token);
   }
 }

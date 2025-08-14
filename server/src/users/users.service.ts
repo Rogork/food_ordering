@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ObjectId } from 'bson';
+import _ from 'lodash';
 
 export interface IUserSession {
   _id: ObjectId;
@@ -49,7 +50,11 @@ export class UsersService {
     });
   }
 
-  generateSession(ip: string = '127.0.0.1', device: string = 'Unknown', agent: string = 'Unknown'): IUserSession {
+  generateSession(
+    ip: string = '127.0.0.1',
+    device: string = 'Unknown',
+    agent: string = 'Unknown',
+  ): IUserSession {
     return {
       _id: new ObjectId(),
       token: new ObjectId().toHexString(),
@@ -58,17 +63,15 @@ export class UsersService {
       ip,
       device,
       agent,
-    }
+    };
   }
 
   async findUserBySessionToken(token: string): Promise<IUser | undefined> {
     return new Promise((resolve) => {
-      for(const user of this.users) {
-        for(const session of user.sessions ?? []) {
-          if (session.token === token) return resolve(user);
-        }
-      }
-      resolve(undefined);
+      const user = _.find(this.users, (user) => {
+        return _.some(user.sessions, (session) => session.token === token);
+      });
+      resolve(user);
     });
   }
 
@@ -93,6 +96,17 @@ export class UsersService {
       if (user.sessions === undefined) user.sessions = [];
       user.sessions.push(session);
       resolve(session);
+    });
+  }
+
+  async destroySession(token: string) {
+    return new Promise(async (resolve, reject) => {
+      const user = await this.findUserBySessionToken(token);
+      if (user === undefined) return reject();
+      // temp code because no db lol
+      const sessionIndex = _.findIndex(user.sessions, (session) => session.token === token);
+      user.sessions?.splice(sessionIndex, 1);
+      resolve(true);
     });
   }
 }

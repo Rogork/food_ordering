@@ -27,11 +27,11 @@
     <p>Enter the code of the group you want to join below:</p>
     <tui-textfield [tuiTextfieldCleaner]="true">
       <label tuiLabel>Group Code</label>
-      <input tuiTextField tuiAutoFocus [(ngModel)]="joinCode" />
+      <input tuiTextfield tuiAutoFocus [(ngModel)]="joinCode" />
     </tui-textfield>
-    <div class="flex flex-row-reverse">
+    <div class="flex flex-row-reverse mt-2">
       <tui-loader [overlay]="true" [showLoader]="isJoining()">
-        <button size="m" [disabled]="joinCode().length === 0" tuiButton appearance="primary" (click)="joinGroup();">
+        <button class="w-32" size="m" [disabled]="joinCode().length === 0" tuiButton appearance="positive" (click)="joinGroup();">
           JOIN
         </button>
       </tui-loader>

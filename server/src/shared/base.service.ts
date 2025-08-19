@@ -1,14 +1,7 @@
-export interface IAttribute<T extends any> {
-    name: string;
-    required: { onInsert: boolean, onUpdate: boolean } | true;
-    get?: () => T;
-    set?: (val: any) => T;
-}
+import { BaseModel } from './base.model';
 
-export interface IBaseService {
-    collection: string;
-    attributes: IAttribute<any>[];
-}
+export class BaseService<T extends typeof BaseModel> {
+  constructor() {}
 
-export class BaseService<T extends any> {
+  public findOne() {}
 }

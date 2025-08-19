@@ -3,17 +3,18 @@ import { AuthService } from './auth.service';
 import { type INewUser } from 'src/users/users.service';
 import _ from "lodash";
 import { RestaurantModel } from 'src/ordering/restaurant.service';
-import { BaseModel } from 'src/shared/base.model';
+import { EOperation } from 'src/shared/meta.utils';
+import { Database } from 'src/shared/database.service';
 @Controller('auth')
 export class AuthController {
 
-    constructor(private authService: AuthService) {}
+    constructor(private authService: AuthService, private db: Database) {}
 
     @Get('test')
-    public async test(@Body() params: any) {
-        const rest = new RestaurantModel();
-        rest.name = "Bird Balace";
-        return { code: 200, data: { model: rest } }
+    public async test(@Query('name') name: string) {
+        const _rest = await this.db.insert(new RestaurantModel({ name }));
+
+        return { code: 200, data: { model: _rest } }
     }
 
     @Get('get-details')

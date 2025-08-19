@@ -1,6 +1,10 @@
+// meta.utils.ts
 import _ from 'lodash';
 import 'reflect-metadata';
 
+/* =========================
+ *  Phases / Metadata Keys
+ * ========================= */
 export enum EOperation {
   NEW,
   INSERT,
@@ -11,123 +15,258 @@ export const MODEL_METADATA = Symbol('MODEL_METADATA');
 export const FIELD_METADATA = Symbol('FIELD_METADATA');
 export const MODEL_VALIDATORS = Symbol('MODEL_VALIDATORS');
 
-export interface FieldMetadata<T extends any> {
-  type: T;
-  required?: { insert?: true; update?: true } | true;
-  default?: { new?: () => T; insert?: () => T; update?: () => T } | (() => T);
-  getter?: () => T;
-  setter?: (val: any) => void;
+/* =========================
+ *  Field Metadata Types
+ * ========================= */
+
+export type DefaultValue<T> = T | (() => T);
+
+export interface FieldDefaults<T> {
+  new?: DefaultValue<T>;
+  insert?: DefaultValue<T>;
+  update?: DefaultValue<T>;
 }
 
-export type ModelValidator = (
-  entity: any,
-  operation: EOperation,
-) => true | string;
+/**
+ * Field metadata modeled around runtime constructors (e.g. Date, ObjectId).
+ * getter/setter here are TRUE accessors bound to `this`, not coercion functions.
+ * If you prefer coercion on assignment, omit getter/setter and do coercion in the ctor.
+ */
+export interface FieldMetadata<
+  TCtor extends new (...args: any[]) => any = any
+> {
+  /** Runtime constructor (e.g., Date, ObjectId, String, Number) */
+  type?: TCtor;
 
-export function getFieldMetadata(
+  /** Phase-specific defaults, or a single factory/value */
+  default?: FieldDefaults<InstanceType<TCtor>> | DefaultValue<InstanceType<TCtor>>;
+
+  /** True accessor reading from instance (e.g. via Symbol-backed store) */
+  getter?: (this: any) => any;
+
+  /** True accessor writing to instance (e.g. via Symbol-backed store) */
+  setter?: (this: any, v: any) => void;
+
+  /** Optional requirement flags (usable by validators) */
+  required?: true | { new?: true; insert?: true; update?: true };
+}
+
+/* =========================
+ *  Validators
+ * ========================= */
+
+export type ValidatorFn<T = any> = (entity: T, op: EOperation) => true | string;
+
+export function addModelValidator(target: any, validator: ValidatorFn) {
+  const existing: ValidatorFn[] =
+    Reflect.getMetadata(MODEL_VALIDATORS, target) || [];
+  existing.push(validator);
+  Reflect.defineMetadata(MODEL_VALIDATORS, existing, target);
+}
+
+export function getModelValidators<T extends object>(entity: T): ValidatorFn<T>[] {
+  // stored on the prototype where decorators run
+  const proto = Object.getPrototypeOf(entity);
+  return (Reflect.getMetadata(MODEL_VALIDATORS, proto) || []) as ValidatorFn<T>[];
+}
+
+/* =========================
+ *  Field Metadata Helpers
+ * ========================= */
+
+/** Set/merge field metadata on a prototype */
+export function setFieldMetadata<
+  TCtor extends new (...args: any[]) => any
+>(
   target: any,
-): Record<string, FieldMetadata<any>> {
-  return Reflect.getMetadata(FIELD_METADATA, target) || {};
+  propertyKey: string,
+  data: Partial<FieldMetadata<TCtor>>,
+) {
+  const fields: Record<string, FieldMetadata<any>> =
+    Reflect.getMetadata(FIELD_METADATA, target) || {};
+
+  fields[propertyKey] = { ...(fields[propertyKey] ?? {}), ...data };
+  Reflect.defineMetadata(FIELD_METADATA, fields, target);
 }
 
-export function getModelValidators(target: any): ModelValidator[] {
-  return Reflect.getMetadata(MODEL_VALIDATORS, target) || [];
+/** Get field metadata defined directly on a prototype */
+function getOwnFieldMetadata(proto: any): Record<string, FieldMetadata<any>> {
+  return Reflect.getMetadata(FIELD_METADATA, proto) || {};
 }
 
-export function appendModelValidator(target: any, validator: ModelValidator) {
-  let validators: ModelValidator[] = Reflect.getMetadata(
-    MODEL_VALIDATORS,
-    target,
-  );
-  if (validators === undefined) {
-    validators = [];
-    Reflect.defineMetadata(MODEL_VALIDATORS, validators, target);
+/**
+ * Merge field metadata across the prototype chain so derived classes
+ * see base fields. Child overrides take precedence.
+ */
+function getMergedFieldMetadataFromProto(proto: any): Record<string, FieldMetadata<any>> {
+  const chain: any[] = [];
+  let p = proto;
+  while (p && p !== Object.prototype) {
+    chain.push(p);
+    p = Object.getPrototypeOf(p);
   }
-  validators.push(validator);
+  // build from base -> derived so child overrides win last
+  const merged: Record<string, FieldMetadata<any>> = {};
+  for (let i = chain.length - 1; i >= 0; i--) {
+    Object.assign(merged, getOwnFieldMetadata(chain[i]));
+  }
+  return merged;
 }
 
-export function applyDefaults(
-  entity: any,
-  operation: EOperation = EOperation.NEW,
-): void {
-  const fields = getFieldMetadata(entity);
-  for (const [key, meta] of Object.entries(fields)) {
-    if ((entity[key] === null || entity[key] === undefined) && meta.default) {
-      if (meta.default instanceof Function) {
-        entity[key] = meta.default();
-      } else {
-        if (operation === EOperation.INSERT && meta.default.insert)
-          entity[key] = meta.default.insert();
-        else if (operation === EOperation.UPDATE && meta.default.update)
-          entity[key] = meta.default.update();
-        else if (operation === EOperation.NEW && meta.default.new)
-          entity[key] = meta.default.new();
-      }
+/* =========================
+ *  Defaults Application
+ * ========================= */
+
+function resolveDefault<T>(dv: DefaultValue<T> | undefined): T | undefined {
+  if (dv === undefined) return undefined;
+  return typeof dv === 'function' ? (dv as () => T)() : dv;
+}
+
+function phaseKey(op: EOperation): 'new' | 'insert' | 'update' {
+  if (op === EOperation.NEW) return 'new';
+  if (op === EOperation.INSERT) return 'insert';
+  return 'update';
+}
+
+/** Apply defaults to nullish fields for the given phase (NEW by default) */
+export function applyDefaults(entity: any, op: EOperation = EOperation.NEW): void {
+  const allFields = getMergedFieldMetadataFromProto(entity.constructor?.prototype);
+  const key = phaseKey(op);
+
+  for (const [fieldName, meta] of Object.entries(allFields)) {
+    const current = (entity as any)[fieldName];
+    if (current !== undefined && current !== null) continue;
+
+    if (typeof meta.default === 'function') {
+      const value = (meta.default as Function)();
+      if (value !== undefined) (entity as any)[fieldName] = value;
+      continue;
+    }
+
+    if (meta.default && typeof meta.default === 'object') {
+      const value = resolveDefault((meta.default as FieldDefaults<any>)[key]);
+      if (value !== undefined) (entity as any)[fieldName] = value;
     }
   }
 }
 
-export function setFieldMetadata<T extends any>(
-  target: any,
-  propertyKey: string,
-  data: Partial<FieldMetadata<T>>,
-) {
-  const fields: Record<string, FieldMetadata<T>> = Reflect.getMetadata(
-    FIELD_METADATA,
-    target,
-  ) || {};
-  fields[propertyKey] = { ...(fields[propertyKey] || {}), ...data };
-  Reflect.defineMetadata(FIELD_METADATA, fields, target);
-}
+/* =========================
+ *  Model Decorator
+ * ========================= */
 
 export interface ModelOptions {
   table?: string;
 }
 
+/**
+ * ClassDecorator that:
+ *  - Installs property accessors (get/set) once per class, inheritance-safe.
+ *  - Returns a constructor that accepts `(init?: Record<string, any>)`.
+ *  - Applies NEW-phase defaults then assigns `init` values for any known field
+ *    (including inherited ones).
+ *  - Adds an instance `validate(operation)` method.
+ *
+ * NOTE: TypeScript does not auto-update the class type via decorators.
+ * If you want types for `(init?: Partial<T>)` + `.validate`, use `asModelCtor<T>()` helper below.
+ */
 export function Model(options: ModelOptions = {}): ClassDecorator {
   return function (target: Function) {
+    // Merge field metadata across the chain so derived classes see base fields
+    const mergedFields: Record<string, FieldMetadata<any>> =
+      getMergedFieldMetadataFromProto(target.prototype);
+
+    // Install accessors ONCE for this class where requested; never override existing descriptors
+    for (const [field, config] of Object.entries(mergedFields)) {
+      if (!config.getter && !config.setter) continue;
+
+      const existing = Object.getOwnPropertyDescriptor(target.prototype, field);
+      if (existing?.get || existing?.set) continue; // already installed for this class
+
+      const desc: PropertyDescriptor = { enumerable: true, configurable: true };
+      if (config.getter) desc.get = function () { return config.getter!.call(this); };
+      if (config.setter) desc.set = function (v: any) { return config.setter!.call(this, v); };
+      Object.defineProperty(target.prototype, field, desc);
+    }
+
+    // Wrapper constructor using proper [[Construct]] semantics
     const NewCtor: any = function (this: any, init?: Record<string, any>) {
-      // create the instance of Target with proper [[Construct]]
+      // Construct the original class instance
       const self = Reflect.construct(target as any, [], new.target || NewCtor);
 
-      const fields: Record<string, FieldMetadata<any>> = Reflect.getMetadata(
-        FIELD_METADATA,
-        target.prototype,
-      ) || {};
+      // Apply NEW-phase defaults first (inherited fields included)
+      applyDefaults(self, EOperation.NEW);
 
-      _.each(fields, (config, field) => {
-        Object.defineProperty(target.prototype, field, {
-          ...(config.getter && { get: config.getter }),
-          ...(config.setter && { set: config.setter }),
-          enumerable: true,
-          configurable: true,
-        });
-      });
-
-      applyDefaults(self);
-
-      for (const [key, value] of _.entries(init)) {
-        if (fields[key]) self[key] = value;
+      // Assign init values for any known field (inherited included)
+      if (init) {
+        for (const [key, value] of _.entries(init) as [string, any][]) {
+          if (key in mergedFields) (self as any)[key] = value;
+        }
       }
+      // console.log(`Constructor for ${self.name}`)
+      // console.log(init);
+      // console.log(self);
       return self;
     };
 
-    const validate = (entity: any, operation: EOperation): true | string[] => {
-      const validators = getModelValidators(entity);
+    // Prototype chain
+    NewCtor.prototype = Object.create(target.prototype, {
+      constructor: { value: NewCtor, writable: true, configurable: true },
+    });
+
+    // Instance validate method
+    NewCtor.prototype.validate = function (operation: EOperation): true | string[] {
+      const validators = getModelValidators(this);
       const errors: string[] = [];
       for (const validator of validators) {
-        const isValid = validator(entity, operation);
-        if (!isValid) errors.push(isValid);
+        const res = validator(this, operation);
+        if (res !== true) errors.push(res);
       }
       return errors.length === 0 ? true : errors;
     };
 
-    NewCtor.prototype = Object.create(target.prototype);
-    NewCtor.prototype.constructor = NewCtor;
-    NewCtor.prototype.validate = validate;
+    // Model find methods
+    Object.defineProperty(NewCtor, 'findOne', {
+      value: async function <T>(this: new () => T, query: any): Promise<T[]> {
+        
+        return [];
+      },
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
 
+    // Preserve static properties
+    Object.setPrototypeOf(NewCtor, target);
+
+    // Attach model options to the NEW ctor
     Reflect.defineMetadata(MODEL_METADATA, options, NewCtor);
 
     return NewCtor;
   };
+}
+
+/* =========================
+ *  Typing Helpers (Optional)
+ * ========================= */
+
+/**
+ * A constructor that accepts `(init?: Partial<T>)` and produces `T & { validate(...) }`.
+ * Use at the usage site to regain types from a decorated class.
+ *
+ *   @Model()
+ *   class User { ... }
+ *
+ *   export const UserModel = asModelCtor<User>(User);
+ *   const u = new UserModel({ username: 'john' });
+ *   u.validate(EOperation.INSERT);
+ */
+export type ModelCtor<T> = new (init?: Partial<T>) => T & {
+  validate(operation: EOperation): true | string[];
+  insert(): Promise<boolean>;
+  update(): Promise<boolean>;
+  delete(): Promise<boolean>;
+};
+
+export function asModelCtor<T>(cls: any): ModelCtor<T> {
+  return cls as ModelCtor<T>;
 }

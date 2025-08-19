@@ -1,16 +1,18 @@
 import { ObjectId } from 'bson';
 import {
-  appendModelValidator,
+  addModelValidator,
   EOperation,
-  ModelValidator,
+  ValidatorFn,
   setFieldMetadata,
+  FieldMetadata,
 } from './meta.utils';
 import _ from 'lodash';
 
 // Type decorators
 export function Id(): PropertyDecorator {
   return (target, propertyKey) => {
-    setFieldMetadata<ObjectId>(target, propertyKey as string, {
+    setFieldMetadata(target, propertyKey as string, {
+      type: ObjectId,
       setter: (val: string | ObjectId) => new ObjectId(val),
       default: { insert: () => new ObjectId() },
     });
@@ -19,7 +21,8 @@ export function Id(): PropertyDecorator {
 
 export function NumberField(): PropertyDecorator {
   return (target, propertyKey) => {
-    setFieldMetadata<number>(target, propertyKey as string, {
+    setFieldMetadata(target, propertyKey as string, {
+      type: Number,
       setter: (val: string | number) => _.toNumber(val),
     });
   };
@@ -27,15 +30,17 @@ export function NumberField(): PropertyDecorator {
 
 export function DateField(): PropertyDecorator {
   return (target, propertyKey) => {
-    setFieldMetadata<Date>(target, propertyKey as string, {
-      setter: (val: string | number | Date) =>  new Date(val),
+    setFieldMetadata(target, propertyKey as string, {
+      type: Date,
+      setter: (val: string | number | Date) => new Date(val),
     });
   };
 }
 
 export function Bool(): PropertyDecorator {
   return (target, propertyKey) => {
-    setFieldMetadata<boolean>(target, propertyKey as string, {
+    setFieldMetadata(target, propertyKey as string, {
+      type: Boolean,
       setter: (val: string | number | boolean) => {
         if (_.isNumber(val)) return val === 1;
         else if (_.isString(val)) return val === 'true' || val === '1';
@@ -50,7 +55,7 @@ export function Required(
   opts: { insert?: true; update?: true } | true = true,
 ): PropertyDecorator {
   return (target, propertyKey) => {
-    let validator: ModelValidator;
+    let validator: ValidatorFn;
     if (opts === true) {
       validator = (entity, operation) => {
         if (entity[propertyKey] === null || entity[propertyKey] === undefined)
@@ -76,7 +81,7 @@ export function Required(
         return true;
       };
     }
-    appendModelValidator(target, validator);
+    addModelValidator(target, validator);
   };
 }
 
@@ -90,10 +95,7 @@ export function Default<T extends any>(
 }
 
 // Generic field (custom getter + setter)
-export function Field<T extends any>(opts: {
-  getter?: () => T;
-  setter?: (val: any) => void;
-}): PropertyDecorator {
+export function Property(opts: Partial<FieldMetadata> = {}): PropertyDecorator {
   return (target, propertyKey) => {
     setFieldMetadata(target, propertyKey as string, opts);
   };

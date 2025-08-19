@@ -25,6 +25,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@types/lodash": "^4.17.20",
+    "@types/nedb": "^1.8.16",
     "bson": "^6.10.4",
     "lodash": "^4.17.21",
     "nedb": "^1.8.0",

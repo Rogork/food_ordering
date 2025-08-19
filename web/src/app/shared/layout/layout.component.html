@@ -1,11 +1,57 @@
-<div class="flex flex-col">
-  <app-titlebar></app-titlebar>
-  <div class="flex flex-row">
-    <app-nav></app-nav>
-    <main class="flex-auto">
-      <section class="p-4 sm:p-6">
-        <router-outlet />
-      </section>
-    </main>
-  </div>
+<app-titlebar [(sidebarOpen)]="sidebarOpen"></app-titlebar>
+<app-nav [(sidebarOpen)]="sidebarOpen"></app-nav>
+
+<!-- Main container -->
+<div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+
+  <!-- Main Content Area -->
+  <main class="lg:ml-64 pt-16 min-h-screen">
+
+    <!-- Page Header with Breadcrumbs -->
+    <div class="bg-gray-800/50 backdrop-blur-sm border-b border-white/10 px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-semibold mb-1">{{ currentPageTitle() }}</h2>
+          <nav class="flex items-center space-x-2 text-sm text-gray-400">
+            @for (crumb of breadcrumbs(); track crumb.path; let isLast = $last) {
+            <span>{{ crumb.label }}</span>
+            @if (!isLast) {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+            }
+            }
+          </nav>
+        </div>
+
+        <!-- Page Actions -->
+        <div class="flex items-center gap-3">
+          <button class="px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-medium transition-all transform hover:scale-105">
+            New Order
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content Area with Background Effects -->
+    <div class="relative overflow-hidden">
+      <!-- Subtle background pattern -->
+      <div class="absolute inset-0 opacity-5">
+        <div class="absolute inset-0" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 20px 20px;"></div>
+      </div>
+
+      <!-- Floating particles for ambiance -->
+      <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        @for (particle of backgroundParticles; track $index) {
+        <div class="absolute w-1 h-1 bg-orange-400 rounded-full animate-twinkle opacity-30" [style.left.%]="particle.x" [style.top.%]="particle.y" [style.animation-delay]="particle.delay + 's'">
+        </div>
+        }
+      </div>
+
+      <!-- Router Outlet - Your page content goes here -->
+      <div class="relative z-10 p-6">
+        <router-outlet></router-outlet>
+      </div>
+    </div>
+  </main>
 </div>

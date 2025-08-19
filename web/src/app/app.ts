@@ -1,7 +1,9 @@
 import { TuiLoader, TuiRoot } from '@taiga-ui/core';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Event, NavigationEnd, NavigationStart, Router, RouterOutlet } from '@angular/router';
-import { AuthService } from './auth/auth-service';
+import { AuthService } from './shared/auth/auth-service';
+import { Title } from '@angular/platform-browser';
+import { TitleService } from './shared/title-service';
 
 @Component({
   selector: 'app-root',
@@ -11,10 +13,12 @@ import { AuthService } from './auth/auth-service';
 })
 export class App {
   readonly authService = inject(AuthService);
+  readonly titleService = inject(TitleService);
   navigationEnd = signal(false);
   isReady = computed(() => this.navigationEnd() && this.authService.initialized());
 
-  constructor(private router: Router) {
+  constructor(private router: Router, private title: Title) {
+    this.title.setTitle(this.titleService.fullTitle());
     this.router.events.subscribe((event: Event) => {
       if (event instanceof NavigationStart) {
         this.navigationEnd.set(false);

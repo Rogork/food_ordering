@@ -36,7 +36,7 @@ export class LandingAuth {
   readonly errorMsg = signal<string | null>(null);
 
   public readonly emailForm = this.fb.group({
-    email: this.fb.control('', {
+    email: this.fb.control('alaradi.abdulla@gmail.com', {
       validators: [
         Validators.required,
         Validators.email,
@@ -46,7 +46,7 @@ export class LandingAuth {
   });
 
   readonly passwordForm = this.fb.group({
-    password: this.fb.control('', {
+    password: this.fb.control('123456', {
       validators: [Validators.required, Validators.minLength(6)],
     }),
   });
@@ -59,7 +59,7 @@ export class LandingAuth {
   constructor(private authService: AuthService) {
     effect(() => {
       if (this.step() === 'email') {
-        this.passwordForm.reset();
+        this.passwordForm.setValue({ password: '123456' });
         this.errorMsg.set(null);
       }
     });

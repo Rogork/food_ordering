@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, model } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { TuiAlertService, TuiIcon } from '@taiga-ui/core';
 import { TuiResponsiveDialogService } from '@taiga-ui/addon-mobile';
@@ -6,9 +6,17 @@ import { TUI_CONFIRM, type TuiConfirmData } from '@taiga-ui/kit';
 import { AuthService } from '../../auth/auth-service';
 import { concatMap, filter } from 'rxjs';
 
+interface NavigationItem {
+  label: string;
+  icon: string;
+  path: string;
+  badge?: number;
+  children?: NavigationItem[];
+}
+
 @Component({
   selector: 'app-nav',
-  imports: [TuiIcon, RouterModule],
+  imports: [RouterModule],
   templateUrl: './nav.html',
   styleUrl: './nav.less',
 })
@@ -18,21 +26,48 @@ export class Nav {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
 
-  logout() {
-    const data: TuiConfirmData = {
-      content: 'Are you sure you want to log out?',
-    };
-
-    this.dialogs.open<boolean>(TUI_CONFIRM, { label: 'Logout Confirm', size: 's', data }).pipe(
-      filter((confirmed) => confirmed === true),
-      concatMap(() => this.authService.logout()),
-    ).subscribe({
-        next: () => {
-          this.router.navigate(['/auth']);
-        },
-        error: (err) => {
-          this.alerts.open("Error encountered while logging you out, please try again later", { label: "Logout Error" });
-        }
-      });
+  readonly sidebarOpen = model(false);
+  toggleSidebar() {
+    this.sidebarOpen.update((val) => !val);
   }
+
+  navigationItems: NavigationItem[] = [
+    {
+      label: 'Home',
+      icon: '🏠',
+      path: '/',
+    },
+    {
+      label: 'Orders',
+      icon: '📋',
+      path: '/orders',
+      badge: 5,
+      children: [
+        { label: 'Active Orders', icon: '', path: '/orders/active' },
+        { label: 'Order History', icon: '', path: '/orders/history' },
+      ],
+    },
+    {
+      label: 'Restaurants',
+      icon: '🍽️',
+      path: '/restaurants',
+      children: [
+        { label: 'Browse All', icon: '', path: '/restaurants/browse' },
+        { label: 'Favorites', icon: '', path: '/restaurants/favorites' },
+        { label: 'Recently Ordered', icon: '', path: '/restaurants/recent' },
+      ],
+    },
+    {
+      label: 'Groups',
+      icon: '👥',
+      path: '/groups',
+      badge: 2,
+    },
+    {
+      label: 'Settings',
+      icon: '⚙️',
+      path: '/settings',
+    },
+  ];
+  val: any;
 }

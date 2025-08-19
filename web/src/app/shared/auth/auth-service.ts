@@ -1,8 +1,14 @@
 import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
-import { APIService } from '../shared/api-service';
+import { APIService } from '../../shared/api-service';
 import { map, of } from 'rxjs';
 import { TuiAlertService } from '@taiga-ui/core';
 import { isPlatformBrowser } from '@angular/common';
+
+export enum EUserRole {
+  User = 'U',
+  Admin = 'A',
+  Superuser = 'SU',
+}
 
 export interface IUserSession {
   _id: string;
@@ -20,6 +26,8 @@ export interface IUser {
   email: string;
   createdAt: Date;
   session: IUserSession;
+  avatar?: string;
+  role?: EUserRole;
 }
 
 @Injectable({ providedIn: "root" })

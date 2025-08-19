@@ -1,22 +1,68 @@
-<header class="sticky top-0 z-40 bg-neutral-900/90 backdrop-blur border-b border-neutral-800">
-  <div class="mx-auto max-w-7xl px-3 sm:px-4">
-    <div class="h-12 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <!-- Mobile: open sidebar -->
-        <button id="openSidebar" class="inline-flex items-center justify-center rounded-md p-2 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500 sm:hidden" aria-label="Open navigation">
-          <!-- icon -->
-          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 left-0 right-0 bg-gray-900/95 backdrop-blur-md border-b border-white/10 z-50">
+  <div class="flex items-center justify-between px-4 lg:px-6 h-16">
+
+    <!-- Left: Logo + Mobile Menu Toggle -->
+    <div class="flex items-center gap-4">
+      <button (click)="toggleSidebar()" class="lg:hidden p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+      </button>
+
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-gradient-to-r from-orange-600 to-orange-400 rounded-lg flex items-center justify-center">
+          <span class="text-sm font-bold">FO</span>
+        </div>
+        <h1 class="font-semibold tracking-[2px] text-lg hidden sm:block">FOOD ORDERING</h1>
+      </div>
+    </div>
+
+    <!-- Center: Search Bar (Desktop) -->
+    <div class="hidden md:flex flex-1 max-w-md mx-8">
+      <div class="relative w-full">
+        <input type="text" placeholder="Search restaurants, dishes, or groups..." class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 pl-10 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
+                       placeholder-gray-400 backdrop-blur-sm">
+        <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Right: Actions + Profile -->
+    <div class="flex items-center gap-2 lg:gap-4">
+
+      <!-- Join Group Button -->
+      <button (click)="showJoinDialog.set(true)" class="hidden sm:flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-medium transition-all transform hover:scale-105">
+        <span>🔗</span>
+        <span class="hidden lg:inline">Join Group</span>
+      </button>
+
+      <!-- Profile Dropdown -->
+      <div class="relative" (click)="toggleProfileMenu()">
+        <button class="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg transition-all">
+          <img [src]="userProfile()?.avatar" [alt]="userProfile()?.name" class="w-8 h-8 rounded-full border-2 border-orange-500/50">
+          <div class="hidden lg:block text-left">
+            <div class="text-sm font-medium">{{ userProfile()?.name }}</div>
+            <div class="text-xs text-gray-400">{{ userProfile()?.role }}</div>
+          </div>
+          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
-        <span class="text-xs uppercase tracking-wider text-neutral-300">Food Ordering</span>
-      </div>
 
-      <div class="flex items-center gap-2">
-        <button tuiButton (click)="showJoinDialog.set(true)" size="s" appearance="flat-destructive" class="border-orange-600/60 text-sm font-medium text-orange-400 hover:bg-orange-600/10 focus:outline-none focus:ring-2 focus:ring-orange-500">
-          <tui-icon icon="@tui.log-in" class="mr-2" />
-          Join Group
-        </button>
+        <!-- Profile Dropdown Menu -->
+        @if (showProfileMenu()) {
+        <div class="absolute right-0 top-full mt-2 w-48 bg-gray-800 border border-white/10 rounded-lg shadow-xl py-2 z-50">
+          @for (item of profileMenuItems; track item.label) {
+          <button (click)="handleProfileAction(item.action)" class="w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors flex items-center gap-3">
+            <span>{{ item.icon }}</span>
+            {{ item.label }}
+          </button>
+          }
+        </div>
+        }
       </div>
     </div>
   </div>
@@ -24,7 +70,7 @@
 
 <ng-template [tuiDialogOptions]="{label: 'Join Group', size: 's'}" [(tuiDialog)]="showJoinDialog">
   <div class="flex flex-col">
-    <p>Enter the code of the group you want to join below:</p>
+    <p class="mb-4">Enter the code of the group below:</p>
     <tui-textfield [tuiTextfieldCleaner]="true">
       <label tuiLabel>Group Code</label>
       <input tuiTextfield tuiAutoFocus [(ngModel)]="joinCode" />

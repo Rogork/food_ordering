@@ -1,11 +1,12 @@
+import _ from 'lodash';
 import 'reflect-metadata';
 
 export enum EOperation {
+  NEW,
   INSERT,
   UPDATE,
 }
 
-// field defs
 export const MODEL_METADATA = Symbol('MODEL_METADATA');
 export const FIELD_METADATA = Symbol('FIELD_METADATA');
 export const MODEL_VALIDATORS = Symbol('MODEL_VALIDATORS');
@@ -13,8 +14,9 @@ export const MODEL_VALIDATORS = Symbol('MODEL_VALIDATORS');
 export interface FieldMetadata<T extends any> {
   type: T;
   required?: { insert?: true; update?: true } | true;
-  default?: { insert?: () => T; update?: () => T } | (() => T);
-  getter?: (instance: any) => T;
+  default?: { new?: () => T; insert?: () => T; update?: () => T } | (() => T);
+  getter?: () => T;
+  setter?: (val: any) => void;
 }
 
 export type ModelValidator = (
@@ -32,13 +34,25 @@ export function getModelValidators(target: any): ModelValidator[] {
   return Reflect.getMetadata(MODEL_VALIDATORS, target) || [];
 }
 
+export function appendModelValidator(target: any, validator: ModelValidator) {
+  let validators: ModelValidator[] = Reflect.getMetadata(
+    MODEL_VALIDATORS,
+    target,
+  );
+  if (validators === undefined) {
+    validators = [];
+    Reflect.defineMetadata(MODEL_VALIDATORS, validators, target);
+  }
+  validators.push(validator);
+}
+
 export function applyDefaults(
   entity: any,
-  operation: EOperation = EOperation.INSERT,
+  operation: EOperation = EOperation.NEW,
 ): void {
   const fields = getFieldMetadata(entity);
   for (const [key, meta] of Object.entries(fields)) {
-    if (entity[key] == null && meta.default) {
+    if ((entity[key] === null || entity[key] === undefined) && meta.default) {
       if (meta.default instanceof Function) {
         entity[key] = meta.default();
       } else {
@@ -46,6 +60,8 @@ export function applyDefaults(
           entity[key] = meta.default.insert();
         else if (operation === EOperation.UPDATE && meta.default.update)
           entity[key] = meta.default.update();
+        else if (operation === EOperation.NEW && meta.default.new)
+          entity[key] = meta.default.new();
       }
     }
   }
@@ -64,39 +80,36 @@ export function setFieldMetadata<T extends any>(
   Reflect.defineMetadata(FIELD_METADATA, fields, target);
 }
 
-// model defs
 export interface ModelOptions {
   table?: string;
 }
 
 export function Model(options: ModelOptions = {}): ClassDecorator {
   return function (target: Function) {
-    const newConstructor: any = function (
-      this: any,
-      init?: Record<string, any>,
-    ) {
-      // Call original constructor
-      target.apply(this);
+    const NewCtor: any = function (this: any, init?: Record<string, any>) {
+      // create the instance of Target with proper [[Construct]]
+      const self = Reflect.construct(target as any, [], new.target || NewCtor);
 
       const fields: Record<string, FieldMetadata<any>> = Reflect.getMetadata(
         FIELD_METADATA,
         target.prototype,
       ) || {};
 
-      // Apply defaults first
-      applyDefaults(this);
+      _.each(fields, (config, field) => {
+        Object.defineProperty(target.prototype, field, {
+          ...(config.getter && { get: config.getter }),
+          ...(config.setter && { set: config.setter }),
+          enumerable: true,
+          configurable: true,
+        });
+      });
 
-      if (init) {
-        for (const [key, value] of Object.entries(init)) {
-          if (fields[key]) {
-            // If the field had a setter, use it (works because we defined property descriptors in Field())
-            this[key] = value;
-          } else {
-            // fallback: assign directly
-            this[key] = value;
-          }
-        }
+      applyDefaults(self);
+
+      for (const [key, value] of _.entries(init)) {
+        if (fields[key]) self[key] = value;
       }
+      return self;
     };
 
     const validate = (entity: any, operation: EOperation): true | string[] => {
@@ -109,13 +122,12 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
       return errors.length === 0 ? true : errors;
     };
 
-    // Preserve prototype chain
-    newConstructor.prototype = Object.create(target.prototype);
-    newConstructor.prototype.constructor = newConstructor;
-    newConstructor.prototype.validate = validate;
+    NewCtor.prototype = Object.create(target.prototype);
+    NewCtor.prototype.constructor = NewCtor;
+    NewCtor.prototype.validate = validate;
 
-    Reflect.defineMetadata(MODEL_METADATA, options, newConstructor);
+    Reflect.defineMetadata(MODEL_METADATA, options, NewCtor);
 
-    return newConstructor;
+    return NewCtor;
   };
 }

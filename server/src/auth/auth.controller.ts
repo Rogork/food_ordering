@@ -2,10 +2,19 @@ import { Body, Controller, Get, Headers, Post, Query, Session } from '@nestjs/co
 import { AuthService } from './auth.service';
 import { type INewUser } from 'src/users/users.service';
 import _ from "lodash";
+import { RestaurantModel } from 'src/ordering/restaurant.service';
+import { BaseModel } from 'src/shared/base.model';
 @Controller('auth')
 export class AuthController {
 
     constructor(private authService: AuthService) {}
+
+    @Get('test')
+    public async test(@Body() params: any) {
+        const rest = new RestaurantModel();
+        rest.name = "Bird Balace";
+        return { code: 200, data: { model: rest } }
+    }
 
     @Get('get-details')
     public async getDetails(@Headers('Authorization') token: string) {

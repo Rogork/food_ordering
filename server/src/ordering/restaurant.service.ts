@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ObjectId } from 'bson';
 import _, { rest } from 'lodash';
+import { BaseModel } from 'src/shared/base.model';
+import { Required } from 'src/shared/decorators.utils';
+import { Model } from 'src/shared/meta.utils';
 
 export interface IMenuItem {
   _id: ObjectId;
@@ -25,11 +28,17 @@ export interface IRestaurant {
   menu: { _id: ObjectId, section: string, items: IMenuItem[] }[];
 }
 
+@Model({ table: 'restaurants' })
+export class RestaurantModel extends BaseModel {
+    @Required()
+    name: string;
+}
+
 export type INewRestaurant = Omit<IRestaurant, '_id' | 'createdAt'>;
 export type IUpdateRestaurant = Omit<IRestaurant, 'menu' | 'createdAt'>;
 
 @Injectable()
-export class UsersService {
+export class RestaurantService {
   private restaurants: IRestaurant[] = [
     {
       _id: new ObjectId(),

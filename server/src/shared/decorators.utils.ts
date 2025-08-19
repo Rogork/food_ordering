@@ -1,42 +1,100 @@
-// decorators.ts
-import { setFieldMetadata } from './meta.utils';
+import { ObjectId } from 'bson';
+import {
+  appendModelValidator,
+  EOperation,
+  ModelValidator,
+  setFieldMetadata,
+} from './meta.utils';
+import _ from 'lodash';
 
 // Type decorators
-export function ObjectId(): PropertyDecorator {
+export function Id(): PropertyDecorator {
   return (target, propertyKey) => {
-    setFieldMetadata(target, propertyKey as string, { type: 'objectId' });
+    setFieldMetadata<ObjectId>(target, propertyKey as string, {
+      setter: (val: string | ObjectId) => new ObjectId(val),
+      default: { insert: () => new ObjectId() },
+    });
+  };
+}
+
+export function NumberField(): PropertyDecorator {
+  return (target, propertyKey) => {
+    setFieldMetadata<number>(target, propertyKey as string, {
+      setter: (val: string | number) => _.toNumber(val),
+    });
   };
 }
 
 export function DateField(): PropertyDecorator {
   return (target, propertyKey) => {
-    setFieldMetadata(target, propertyKey as string, { type: 'date' });
+    setFieldMetadata<Date>(target, propertyKey as string, {
+      setter: (val: string | number | Date) =>  new Date(val),
+    });
+  };
+}
+
+export function Bool(): PropertyDecorator {
+  return (target, propertyKey) => {
+    setFieldMetadata<boolean>(target, propertyKey as string, {
+      setter: (val: string | number | boolean) => {
+        if (_.isNumber(val)) return val === 1;
+        else if (_.isString(val)) return val === 'true' || val === '1';
+        else return !!val;
+      },
+    });
   };
 }
 
 // Requirement decorators
-export function Required(opts: {
-  required: { insert?: true; update?: true } | true
-}): PropertyDecorator {
+export function Required(
+  opts: { insert?: true; update?: true } | true = true,
+): PropertyDecorator {
   return (target, propertyKey) => {
-    setFieldMetadata(target, propertyKey as string, { required: opts.required });
+    let validator: ModelValidator;
+    if (opts === true) {
+      validator = (entity, operation) => {
+        if (entity[propertyKey] === null || entity[propertyKey] === undefined)
+          return `Missing required property: ${propertyKey as string}`;
+        return true;
+      };
+    } else {
+      const requiredOnInsert = opts.insert;
+      const requiredOnUpdate = opts.update;
+      validator = (entity, operation) => {
+        if (
+          operation === EOperation.INSERT &&
+          requiredOnInsert === true &&
+          (entity[propertyKey] === null || entity[propertyKey] === undefined)
+        )
+          return `Missing required property on insert: ${propertyKey as string}`;
+        else if (
+          operation === EOperation.UPDATE &&
+          requiredOnUpdate === true &&
+          (entity[propertyKey] === null || entity[propertyKey] === undefined)
+        )
+          return `Missing required property on update: ${propertyKey as string}`;
+        return true;
+      };
+    }
+    appendModelValidator(target, validator);
   };
 }
 
 // Default value decorator
-export function Default<T extends any>(opts: { onInsert?: { insert?: () => T; update?: () => T } | (() => T) }): PropertyDecorator {
+export function Default<T extends any>(
+  params: { insert?: () => T; update?: () => T } | (() => T),
+): PropertyDecorator {
   return (target, propertyKey) => {
-    setFieldMetadata(target, propertyKey as string, { default: opts.onInsert });
+    setFieldMetadata(target, propertyKey as string, { default: params });
   };
 }
 
-// Generic field (custom getter)
-export function Field(opts: {
-  getter?: (instance: any) => any;
+// Generic field (custom getter + setter)
+export function Field<T extends any>(opts: {
+  getter?: () => T;
+  setter?: (val: any) => void;
 }): PropertyDecorator {
   return (target, propertyKey) => {
-    setFieldMetadata(target, propertyKey as string, {
-      getter: opts.getter,
-    });
+    setFieldMetadata(target, propertyKey as string, opts);
   };
 }

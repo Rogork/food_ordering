@@ -23,7 +23,6 @@ export interface IUserSession {
 @Model({ table: 'users' })
 export class _UserModel {
   @Property()
-  @Required()
   name: string;
 
   @Property()

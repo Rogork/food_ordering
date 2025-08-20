@@ -6,9 +6,9 @@ import 'reflect-metadata';
  *  Phases / Metadata Keys
  * ========================= */
 export enum EOperation {
-  NEW,
-  INSERT,
-  UPDATE,
+  NEW = 'new',
+  INSERT = 'insert',
+  UPDATE = 'update',
 }
 
 export const MODEL_METADATA = Symbol('MODEL_METADATA');
@@ -33,13 +33,15 @@ export interface FieldDefaults<T> {
  * If you prefer coercion on assignment, omit getter/setter and do coercion in the ctor.
  */
 export interface FieldMetadata<
-  TCtor extends new (...args: any[]) => any = any
+  TCtor extends new (...args: any[]) => any = any,
 > {
   /** Runtime constructor (e.g., Date, ObjectId, String, Number) */
   type?: TCtor;
 
   /** Phase-specific defaults, or a single factory/value */
-  default?: FieldDefaults<InstanceType<TCtor>> | DefaultValue<InstanceType<TCtor>>;
+  default?:
+    | FieldDefaults<InstanceType<TCtor>>
+    | DefaultValue<InstanceType<TCtor>>;
 
   /** True accessor reading from instance (e.g. via Symbol-backed store) */
   getter?: (this: any) => any;
@@ -55,7 +57,10 @@ export interface FieldMetadata<
  *  Validators
  * ========================= */
 
-export type ValidatorFn<T = any> = (entity: T, op: EOperation) => true | string;
+export type ValidatorFn<T = any> = (
+  entity: T,
+  op?: EOperation,
+) => true | string;
 
 export function addModelValidator(target: any, validator: ValidatorFn) {
   const existing: ValidatorFn[] =
@@ -64,10 +69,13 @@ export function addModelValidator(target: any, validator: ValidatorFn) {
   Reflect.defineMetadata(MODEL_VALIDATORS, existing, target);
 }
 
-export function getModelValidators<T extends object>(entity: T): ValidatorFn<T>[] {
+export function getModelValidators<T extends object>(
+  entity: T,
+): ValidatorFn<T>[] {
   // stored on the prototype where decorators run
   const proto = Object.getPrototypeOf(entity);
-  return (Reflect.getMetadata(MODEL_VALIDATORS, proto) || []) as ValidatorFn<T>[];
+  return (Reflect.getMetadata(MODEL_VALIDATORS, proto) ||
+    []) as ValidatorFn<T>[];
 }
 
 /* =========================
@@ -75,15 +83,15 @@ export function getModelValidators<T extends object>(entity: T): ValidatorFn<T>[
  * ========================= */
 
 /** Set/merge field metadata on a prototype */
-export function setFieldMetadata<
-  TCtor extends new (...args: any[]) => any
->(
+export function setFieldMetadata<TCtor extends new (...args: any[]) => any>(
   target: any,
   propertyKey: string,
   data: Partial<FieldMetadata<TCtor>>,
 ) {
-  const fields: Record<string, FieldMetadata<any>> =
-    Reflect.getMetadata(FIELD_METADATA, target) || {};
+  const fields: Record<string, FieldMetadata<any>> = Reflect.getMetadata(
+    FIELD_METADATA,
+    target,
+  ) || {};
 
   fields[propertyKey] = { ...(fields[propertyKey] ?? {}), ...data };
   Reflect.defineMetadata(FIELD_METADATA, fields, target);
@@ -98,7 +106,9 @@ function getOwnFieldMetadata(proto: any): Record<string, FieldMetadata<any>> {
  * Merge field metadata across the prototype chain so derived classes
  * see base fields. Child overrides take precedence.
  */
-function getMergedFieldMetadataFromProto(proto: any): Record<string, FieldMetadata<any>> {
+function getMergedFieldMetadataFromProto(
+  proto: any,
+): Record<string, FieldMetadata<any>> {
   const chain: any[] = [];
   let p = proto;
   while (p && p !== Object.prototype) {
@@ -117,36 +127,21 @@ function getMergedFieldMetadataFromProto(proto: any): Record<string, FieldMetada
  *  Defaults Application
  * ========================= */
 
-function resolveDefault<T>(dv: DefaultValue<T> | undefined): T | undefined {
-  if (dv === undefined) return undefined;
-  return typeof dv === 'function' ? (dv as () => T)() : dv;
-}
-
-function phaseKey(op: EOperation): 'new' | 'insert' | 'update' {
-  if (op === EOperation.NEW) return 'new';
-  if (op === EOperation.INSERT) return 'insert';
-  return 'update';
-}
-
 /** Apply defaults to nullish fields for the given phase (NEW by default) */
-export function applyDefaults(entity: any, op: EOperation = EOperation.NEW): void {
-  const allFields = getMergedFieldMetadataFromProto(entity.constructor?.prototype);
-  const key = phaseKey(op);
-
+export function applyDefaults(
+  entity: any,
+  op: EOperation = EOperation.NEW,
+): void {
+  const allFields = getMergedFieldMetadataFromProto(
+    entity.constructor?.prototype,
+  );
   for (const [fieldName, meta] of Object.entries(allFields)) {
     const current = (entity as any)[fieldName];
     if (current !== undefined && current !== null) continue;
-
-    if (typeof meta.default === 'function') {
-      const value = (meta.default as Function)();
-      if (value !== undefined) (entity as any)[fieldName] = value;
-      continue;
-    }
-
-    if (meta.default && typeof meta.default === 'object') {
-      const value = resolveDefault((meta.default as FieldDefaults<any>)[key]);
-      if (value !== undefined) (entity as any)[fieldName] = value;
-    }
+    const value = _.isFunction(meta.default)
+      ? meta.default()
+      : (meta.default?.[op] ?? meta.default);
+    if (value !== undefined) entity[fieldName] = value;
   }
 }
 
@@ -172,8 +167,10 @@ export interface ModelOptions {
 export function Model(options: ModelOptions = {}): ClassDecorator {
   return function (target: Function) {
     // Merge field metadata across the chain so derived classes see base fields
-    const mergedFields: Record<string, FieldMetadata<any>> =
-      getMergedFieldMetadataFromProto(target.prototype);
+    const mergedFields: Record<
+      string,
+      FieldMetadata<any>
+    > = getMergedFieldMetadataFromProto(target.prototype);
 
     // Install accessors ONCE for this class where requested; never override existing descriptors
     for (const [field, config] of Object.entries(mergedFields)) {
@@ -183,8 +180,14 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
       if (existing?.get || existing?.set) continue; // already installed for this class
 
       const desc: PropertyDescriptor = { enumerable: true, configurable: true };
-      if (config.getter) desc.get = function () { return config.getter!.call(this); };
-      if (config.setter) desc.set = function (v: any) { return config.setter!.call(this, v); };
+      if (config.getter)
+        desc.get = function () {
+          return config.getter!.call(this);
+        };
+      if (config.setter)
+        desc.set = function (v: any) {
+          return config.setter!.call(this, v);
+        };
       Object.defineProperty(target.prototype, field, desc);
     }
 
@@ -202,9 +205,6 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
           if (key in mergedFields) (self as any)[key] = value;
         }
       }
-      // console.log(`Constructor for ${self.name}`)
-      // console.log(init);
-      // console.log(self);
       return self;
     };
 
@@ -214,7 +214,9 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
     });
 
     // Instance validate method
-    NewCtor.prototype.validate = function (operation: EOperation): true | string[] {
+    NewCtor.prototype.validate = function (
+      operation: EOperation,
+    ): true | string[] {
       const validators = getModelValidators(this);
       const errors: string[] = [];
       for (const validator of validators) {
@@ -224,19 +226,22 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
       return errors.length === 0 ? true : errors;
     };
 
-    // Model find methods
-    Object.defineProperty(NewCtor, 'findOne', {
-      value: async function <T>(this: new () => T, query: any): Promise<T[]> {
-        
-        return [];
-      },
-      enumerable: false,
-      configurable: true,
-      writable: true,
-    });
-
     // Preserve static properties
     Object.setPrototypeOf(NewCtor, target);
+
+    // Define the modelClass property non-statically
+    Object.defineProperty(NewCtor.prototype, 'modelClass', {
+      get: () => asModelCtor(this),
+      set: () => {},
+      configurable: true,
+    });
+
+    // Define the modelClass property statically
+    Object.defineProperty(NewCtor, 'modelClass', {
+      get: () => asModelCtor(this),
+      enumerable: false,
+      configurable: true,
+    });
 
     // Attach model options to the NEW ctor
     Reflect.defineMetadata(MODEL_METADATA, options, NewCtor);
@@ -261,10 +266,7 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
  *   u.validate(EOperation.INSERT);
  */
 export type ModelCtor<T> = new (init?: Partial<T>) => T & {
-  validate(operation: EOperation): true | string[];
-  insert(): Promise<boolean>;
-  update(): Promise<boolean>;
-  delete(): Promise<boolean>;
+  validate(operation?: EOperation): true | string[];
 };
 
 export function asModelCtor<T>(cls: any): ModelCtor<T> {

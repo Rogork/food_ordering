@@ -1,9 +1,18 @@
+import { PasswordHashSync } from './../shared/password-sync.func';
 import { Injectable } from '@nestjs/common';
-import { ObjectId } from 'bson';
 import _ from 'lodash';
+import { BaseService } from 'src/shared/base.service';
+import { Database } from 'src/shared/database.service';
+import {
+  Default,
+  Password,
+  Property,
+  Required,
+} from 'src/shared/decorators.utils';
+import { _id } from 'src/shared/helpers.func';
+import { asModelCtor, Model, ModelCtor } from 'src/shared/meta.utils';
 
 export interface IUserSession {
-  _id: ObjectId;
   token: string;
   createdAt: Date;
   lastUsed: Date;
@@ -11,102 +20,80 @@ export interface IUserSession {
   device?: string;
   agent?: string;
 }
-
-export interface IUser {
-  _id: ObjectId;
+@Model({ table: 'users' })
+export class _UserModel {
+  @Property()
+  @Required()
   name: string;
+
+  @Property()
+  @Required()
   email: string;
+
+  @Property()
+  @Password()
   password: string;
-  createdAt: Date;
-  sessions?: IUserSession[];
-}
 
-export interface INewUser extends Omit<IUser, '_id' | 'createdAt'> {}
+  @Property()
+  @Default([])
+  sessions: IUserSession[];
 
-@Injectable()
-export class UsersService {
-  private users: IUser[] = [
-    {
-      _id: new ObjectId(),
-      name: 'john',
-      email: 'john@email.com',
-      password: 'changeme',
-      createdAt: new Date(),
-      sessions: [],
-    },
-    {
-      _id: new ObjectId(),
-      name: 'maria',
-      email: 'maria@email.com',
-      password: 'guess',
-      createdAt: new Date(),
-      sessions: [],
-    },
-  ];
-
-  async findOne(email: string): Promise<IUser | undefined> {
-    return new Promise((resolve) => {
-      resolve(this.users.find((user) => user.email === email));
-    });
-  }
-
-  generateSession(
-    ip: string = '127.0.0.1',
-    device: string = 'Unknown',
-    agent: string = 'Unknown',
-  ): IUserSession {
-    return {
-      _id: new ObjectId(),
-      token: new ObjectId().toHexString(),
+  generateSession(ip: string = '127.0.0.1', device: string = 'Unknown', agent: string = 'Unknown'): IUserSession {
+    const session = {
+      token: _id(),
       createdAt: new Date(),
       lastUsed: new Date(),
       ip,
       device,
       agent,
     };
+    this.sessions.push(session);
+    return session;
   }
 
-  async findUserBySessionToken(token: string): Promise<IUser | undefined> {
-    return new Promise((resolve) => {
-      const user = _.find(this.users, (user) => {
-        return _.some(user.sessions, (session) => session.token === token);
-      });
-      resolve(user);
-    });
+  destroySession(token: string) {
+    const idx = _.findIndex(this.sessions, (session) => session.token === token);
+    if (idx === -1) return false;
+    this.sessions.splice(idx, 1);
+    return true;
+  }
+}
+export const UserModel = asModelCtor<_UserModel>(_UserModel);
+
+@Injectable()
+export class UsersService extends BaseService<_UserModel> {
+
+  protected get Model() { return UserModel; }
+
+  async findByEmail(email: string) {
+    return this.findOne({ email });
   }
 
-  async insert(user: INewUser) {
-    const newUser = {
-      _id: new ObjectId(),
-      name: user.name,
-      email: user.email,
-      password: user.password,
-      createdAt: new Date(),
-      sessions: [],
-    };
-    this.users.push(newUser);
-    return newUser;
+  async findUserBySessionToken(token: string) {
+    return this.findOne({ sessions: { $elemMatch: { token }}});
   }
 
-  async createSession(email: string) {
-    return new Promise(async (resolve, reject) => {
-      const user = await this.findOne(email);
-      if (user === undefined) return reject();
-      const session = this.generateSession();
-      if (user.sessions === undefined) user.sessions = [];
-      user.sessions.push(session);
-      resolve(session);
-    });
+  async emailExists(email: string) {
+    const count = await this.count({ email });
+    return count !== 0;
   }
 
-  async destroySession(token: string) {
-    return new Promise(async (resolve, reject) => {
-      const user = await this.findUserBySessionToken(token);
-      if (user === undefined) return reject();
-      // temp code because no db lol
-      const sessionIndex = _.findIndex(user.sessions, (session) => session.token === token);
-      user.sessions?.splice(sessionIndex, 1);
-      resolve(true);
-    });
+  async register(params: Partial<Omit<_UserModel, '_id'|'createdAt'>>) {
+    const user = new UserModel(params);
+    return this.create(user);
+  }
+
+  async signIn(email: string, password: string, ext?: { ip: string, device: string, agent: string}) {
+    const user = await this.findOne({ email });
+    if (!user) throw new Error("User not found");
+    if (!PasswordHashSync.verify(user.password, password)) throw new Error("Password mismatch");
+    const session = user.generateSession(ext?.ip, ext?.device, ext?.agent);
+    return { user, session };
+  }
+
+  async logout(token: string) {
+    const user = await this.findUserBySessionToken(token);
+    if (!user) throw new Error("User not found");
+
   }
 }

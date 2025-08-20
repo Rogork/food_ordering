@@ -8,7 +8,8 @@ import {
   MODEL_METADATA,
   FIELD_METADATA,
   EOperation,
-  ModelCtor, // new (init?: Partial<T>) => T & { validate(op: EOperation): true | string[] }
+  ModelCtor,
+  applyDefaults,
 } from './meta.utils';
 
 type ModelInstance<T> = T & { validate(op: EOperation): true | string[] };
@@ -87,6 +88,8 @@ export class Database {
 
   /** Insert a single model instance */
   public async insert<T>(entity: ModelInstance<T>): Promise<T> {
+    // set defaults for insert operation
+    applyDefaults(entity, EOperation.INSERT);
     // validate instance using your instance method (insert phase)
     const v = entity.validate(EOperation.INSERT);
     if (v !== true) {
@@ -152,6 +155,19 @@ export class Database {
     return docs.map((doc) => this.hydrate<T>(ctor, doc));
   }
 
+  /** Convenience: count */
+  public async count<T>(
+    ctor: ModelCtor<T>,
+    query: Record<string, any>,
+  ): Promise<number> {
+    const datastore = await this.loadByCtor(ctor);
+    return new Promise<number>((resolve, reject) => {
+      datastore.count(query, (err: Error | null, res: number) =>
+        err ? reject(err) : resolve(res),
+      );
+    });
+  }
+
   /** Convenience: find one (returns hydrated instance or null) */
   public async findOne<T>(
     ctor: ModelCtor<T>,
@@ -159,7 +175,7 @@ export class Database {
   ): Promise<T | null> {
     const datastore = await this.loadByCtor(ctor);
     const doc = await new Promise<any | null>((resolve, reject) => {
-      (datastore as any).findOne(query, (err: Error | null, res: any) =>
+      datastore.findOne(query, (err: Error | null, res: any) =>
         err ? reject(err) : resolve(res ?? null),
       );
     });
@@ -175,8 +191,11 @@ export class Database {
   ): Promise<number> {
     const datastore = await this.loadByCtor(ctor);
     const num = await new Promise<number>((resolve, reject) => {
-      (datastore as any).update(query, update, options, (err: Error | null, n: number) =>
-        err ? reject(err) : resolve(n),
+      datastore.update(
+        query,
+        update,
+        options,
+        (err: Error | null, n: number) => (err ? reject(err) : resolve(n)),
       );
     });
     return num;
@@ -190,7 +209,7 @@ export class Database {
   ): Promise<number> {
     const datastore = await this.loadByCtor(ctor);
     const num = await new Promise<number>((resolve, reject) => {
-      (datastore as any).remove(query, options, (err: Error | null, n: number) =>
+      datastore.remove(query, options, (err: Error | null, n: number) =>
         err ? reject(err) : resolve(n),
       );
     });

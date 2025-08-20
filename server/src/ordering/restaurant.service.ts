@@ -1,139 +1,127 @@
 import { Injectable } from '@nestjs/common';
-import { ObjectId } from 'bson';
-import _, { rest } from 'lodash';
 import { BaseModel } from 'src/shared/base.model';
-import { Property, Required } from 'src/shared/decorators.utils';
+import { BaseService } from 'src/shared/base.service';
+import { Default, Property, Required } from 'src/shared/decorators.utils';
 import { asModelCtor, Model } from 'src/shared/meta.utils';
+import _ from 'lodash';
+import { _id } from 'src/shared/helpers.func';
 
 export interface IMenuItem {
-  _id: ObjectId;
+  _id: string;
   name: string;
   price: number;
   addons?: { name: string; price: number }[];
 }
 
-export interface IRestaurant {
-  _id: ObjectId;
-  createdAt: Date;
+export interface IMenuSection {
+  _id: string;
   name: string;
+  items: IMenuItem[];
+}
+
+@Model({ table: 'restaurants' })
+export class _RestaurantModel extends BaseModel {
+  @Required()
+  @Property()
+  name: string;
+
+  @Property()
+  @Default('')
   thumbnail?: string;
+
+  @Property()
+  @Default('')
   location?: string;
+
+  @Property()
+  @Default('')
   menuLink?: string;
+
+  @Property()
+  @Default({
+    availableOn: {
+      talabat: false,
+      jahez: false,
+      ahlan: false,
+      own: false,
+    },
+  })
   availableOn: {
     talabat: boolean;
     jahez: boolean;
     ahlan: boolean;
     own: boolean;
   };
-  menu: { _id: ObjectId; section: string; items: IMenuItem[] }[];
-}
 
-@Model({ table: 'restaurants' })
-class _RestaurantModel extends BaseModel {
-  @Required()
   @Property()
-  name: string;
-
-  qty: number;
+  @Default([])
+  menu: IMenuSection[];
 }
-
 export const RestaurantModel = asModelCtor<_RestaurantModel>(_RestaurantModel);
-
-export type INewRestaurant = Omit<IRestaurant, '_id' | 'createdAt'>;
-export type IUpdateRestaurant = Omit<IRestaurant, 'menu' | 'createdAt'>;
-
 @Injectable()
-export class RestaurantService {
-  private restaurants: IRestaurant[] = [
-    {
-      _id: new ObjectId(),
-      createdAt: new Date(),
-      name: 'Adam Subs',
-      availableOn: {
-        talabat: true,
-        jahez: true,
-        ahlan: true,
-        own: true,
-      },
-      menu: [
-        {
-          _id: new ObjectId(),
-          section: 'Sandwiches',
-          items: [
-            { _id: new ObjectId(), name: 'Philly Cheese Steak', price: 1.21 },
-          ],
-        },
-      ],
-    },
-  ];
+export class RestaurantService extends BaseService<_RestaurantModel> {
+  protected get Model() { return RestaurantModel; }
 
-  async findOne(_id: string | ObjectId): Promise<IRestaurant | undefined> {
-    if (_.isString(_id)) _id = new ObjectId(_id);
-    return new Promise((resolve) => {
-      resolve(
-        this.restaurants.find((restaurant) => restaurant._id.equals(_id)),
-      );
-    });
+  async addMenuSection(restaurantId: string, section: IMenuSection) {
+    const restaurant = await this.findOne({ _id: restaurantId });
+    if (!restaurant) throw new Error('Restaurant not found');
+    section._id = _id();
+    restaurant.menu.push(section);
+    const result = await this.update({ _id: restaurantId }, restaurant);
+    return result === 1;
   }
 
-  async insert(restaurant: INewRestaurant) {
-    const newRestaurant = _.assign(restaurant, {
-      _id: new ObjectId(),
-      createdAt: new Date(),
-    });
-    this.restaurants.push(newRestaurant);
-    return newRestaurant;
+  async addMenuItem(restaurantId: string, sectionId: string, item: IMenuItem) {
+    const restaurant = await this.findOne({ _id: restaurantId });
+    if (!restaurant) throw new Error('Restaurant not found');
+    const section = _.find(
+      restaurant.menu,
+      (section) => section._id === sectionId,
+    );
+    if (!section) throw new Error('Restaurant menu section not found');
+    item._id = _id();
+    section.items.push(item);
+    const result = await this.update({ _id: restaurantId }, restaurant);
+    return result === 1;
   }
 
-  async update(_id: string | ObjectId, update: Partial<IRestaurant>) {
-    if (_.isString(_id)) _id = new ObjectId(_id);
-    return new Promise((resolve, reject) => {
-      const idx = this.restaurants.findIndex((restaurant) =>
-        restaurant._id.equals(_id),
-      );
-      if (!idx) reject('Not found');
-      for (const key in update) this.restaurants[idx][key] = update[key];
-      resolve(true);
-    });
+  async editMenuItem(restaurantId: string, sectionId: string, item: IMenuItem) {
+    const restaurant = await this.findOne({ _id: restaurantId });
+    if (!restaurant) throw new Error('Restaurant not found');
+    const section = _.find(
+      restaurant.menu,
+      (section) => section._id === sectionId,
+    );
+    if (!section) throw new Error('Menu section not found');
+    const itemIndex = _.findIndex(
+      section.items,
+      (other) => other._id === item._id,
+    );
+    if (itemIndex === -1) throw new Error('Menu item not found');
+    section.items[itemIndex] = item;
+    const result = await this.update({ _id: restaurantId }, restaurant);
+    return result === 1;
   }
 
-  async updateRestaruant(_id: string | ObjectId, update: IUpdateRestaurant) {
-    return this.update(_id, update);
-  }
-
-  async addMenuSection(_id: string | ObjectId, name: string) {
-    if (_.isString(_id)) _id = new ObjectId(_id);
-    return new Promise((resolve, reject) => {
-      const idx = this.restaurants.findIndex((restaurant) =>
-        restaurant._id.equals(_id),
-      );
-      if (!idx) reject('Not found');
-      if (!this.restaurants[idx].menu) this.restaurants[idx].menu = [];
-      const section = { _id: new ObjectId(), section: name, items: [] };
-      this.restaurants[idx].menu.push(section);
-      resolve(section);
-    });
-  }
-
-  async addMenuItem(
-    _id: string | ObjectId,
-    sectionId: string | ObjectId,
-    item: Omit<IMenuItem, '_id'>,
+  async removeMenuItem(
+    restaurantId: string,
+    sectionId: string,
+    itemId: string,
   ) {
-    if (_.isString(_id)) _id = new ObjectId(_id);
-    if (_.isString(sectionId)) sectionId = new ObjectId(sectionId);
-    return new Promise((resolve, reject) => {
-      const idx = this.restaurants.findIndex((restaurant) =>
-        restaurant._id.equals(_id),
-      );
-      if (!idx) reject('Not found');
-      for (const restaurant of this.restaurants) {
-        if (!restaurant._id.equals(_id)) continue;
-        for (const section of restaurant.menu) {
-          if (!section._id.equals(sectionId)) continue;
-        }
-      }
-      resolve(false);
-    });
+    const restaurant = await this.findOne({ _id: restaurantId });
+    if (!restaurant) throw new Error('Restaurant not found');
+    const section = _.find(
+      restaurant.menu,
+      (section) => section._id === sectionId,
+    );
+    if (!section) throw new Error('Menu section not found');
+    const itemIndex = _.findIndex(
+      section.items,
+      (other) => other._id === itemId,
+    );
+    if (itemIndex === -1) throw new Error('Menu item not found');
+    section.items.splice(itemIndex, 1);
+    const result = await this.update({ _id: restaurantId }, restaurant);
+    return result === 1;
   }
 }

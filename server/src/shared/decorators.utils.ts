@@ -7,14 +7,20 @@ import {
   FieldMetadata,
 } from './meta.utils';
 import _ from 'lodash';
+import argon2 from 'argon2';
+import { PasswordHashSync } from './helpers.func';
 
-// Type decorators
+////////////////////////////////////////
+//                                    //
+//           Type Decorators          //
+//                                    //
+////////////////////////////////////////
 export function Id(): PropertyDecorator {
   return (target, propertyKey) => {
     setFieldMetadata(target, propertyKey as string, {
-      type: ObjectId,
-      setter: (val: string | ObjectId) => new ObjectId(val),
-      default: { insert: () => new ObjectId() },
+      type: String,
+      setter: (val: string | ObjectId) => val instanceof ObjectId ? val.toHexString() : val,
+      default: { insert: () => new ObjectId().toHexString() },
     });
   };
 }
@@ -50,7 +56,20 @@ export function Bool(): PropertyDecorator {
   };
 }
 
-// Requirement decorators
+export function Password(): PropertyDecorator {
+  return (target, propertyKey) => {
+    setFieldMetadata(target, propertyKey as string, {
+      type: String,
+      setter: (val: string) => PasswordHashSync.hash(val),
+    });
+  };
+}
+
+////////////////////////////////////////
+//                                    //
+//        Validator Decorators        //
+//                                    //
+////////////////////////////////////////
 export function Required(
   opts: { insert?: true; update?: true } | true = true,
 ): PropertyDecorator {
@@ -85,18 +104,22 @@ export function Required(
   };
 }
 
-// Default value decorator
+
+////////////////////////////////////////
+//                                    //
+//     Model Functional Decorators    //
+//                                    //
+////////////////////////////////////////
 export function Default<T extends any>(
-  params: { insert?: () => T; update?: () => T } | (() => T),
+  params: { insert?: () => T; update?: () => T } | (() => T) | T,
 ): PropertyDecorator {
   return (target, propertyKey) => {
     setFieldMetadata(target, propertyKey as string, { default: params });
   };
 }
 
-// Generic field (custom getter + setter)
-export function Property(opts: Partial<FieldMetadata> = {}): PropertyDecorator {
+export function Property(opts: { meta?: Partial<FieldMetadata> } = {}): PropertyDecorator {
   return (target, propertyKey) => {
-    setFieldMetadata(target, propertyKey as string, opts);
+    setFieldMetadata(target, propertyKey as string, opts.meta || {});
   };
 }

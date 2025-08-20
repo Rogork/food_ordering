@@ -1,15 +1,16 @@
 import { ObjectId } from 'bson';
-import { asModelCtor, Model } from './meta.utils';
 import { DateField, Default, Id } from './decorators.utils';
+import { EOperation } from './meta.utils';
 
-@Model()
-class _BaseModel {
+export abstract class BaseModel {
   @Id()
-  _id: ObjectId;
+  _id: string;
 
   @DateField()
   @Default(() => new Date())
   createdAt: Date;
-}
 
-export const BaseModel = asModelCtor<_BaseModel>(_BaseModel);
+  validate(operation?: EOperation): true | string[] {
+    return true;
+  };
+}

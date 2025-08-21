@@ -1,16 +1,21 @@
-import { Body, Controller, Get, Headers, Post, Query, Session } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Ip, Post, Query, Request, Session } from '@nestjs/common';
 import { RestaurantModel } from 'src/ordering/restaurant.service';
 import _ from "lodash";
-import { UsersService } from 'src/users/users.service';
+import { _UserModel, UserModel, UsersService } from 'src/users/users.service';
 @Controller('auth')
 export class AuthController {
 
-    constructor(private userService: UsersService,) {}
+    constructor(private userService: UsersService,) { }
 
     @Get('test')
     public async test(@Query('name') name: string) {
-        const _rest = new RestaurantModel({ name });
-        return { code: 200, data: { model: _rest } }
+        const user = new UserModel({ email: 'lol', password: '12345', dob: ('1990-01-01' as any) });
+        // const user = new _UserModel();
+        // user.email = 'lol';
+        // user.password = '12345';
+        // user.dob = ('1990-01-01' as any);
+        console.log(user);
+        return { code: 200, data: { model: user } };
     }
 
     @Get('get-details')
@@ -18,7 +23,7 @@ export class AuthController {
         token = _.trimStart(token, 'Bearer ');
         const details = await this.userService.findUserBySessionToken(token);
         if (details === undefined) return { code: 401 };
-        return { code: 200, data: details }
+        return { code: 200, data: details };
     }
 
     @Get('email-exists')
@@ -34,8 +39,18 @@ export class AuthController {
     }
 
     @Post('login')
-    public async login(@Body() { email, password }: { email: string, password: string }) {
-        const user = await this.userService.signIn(email, password);
+    public async login(@Body() { email, password }: { email: string, password: string }, @Headers() headers, @Ip() ipFallback) {
+        const xff = headers['x-forwarded-for'];
+        const ip = (headers['cf-connecting-ip'] as string) ||
+            (headers['true-client-ip'] as string) ||
+            (headers['x-real-ip'] as string) ||
+            (Array.isArray(xff) ? xff[0] : (xff as string)?.split(',')[0]?.trim()) ||
+            ipFallback ||
+            null;
+        const userAgent = (headers['user-agent'] as string) ?? null;
+        const deviceName = (headers['x-device-name'] as string) || (headers['x-client-name'] as string) || '';
+
+        const user = await this.userService.signIn(email, password, { ip: ip, device: deviceName, agent: userAgent });
         return { code: 200, data: user };
     }
 

@@ -73,6 +73,7 @@ export class AuthService {
           this.alerts.open(`Error encountered while logging in: ${msg ?? 'UNSPECIFIED'}`, { label: 'Login Error' }).subscribe();
           return false;
         }
+        console.log(data);
         this.currentUser.set(data ?? null);
         return true;
       })

@@ -1,4 +1,3 @@
-import { ObjectId } from 'bson';
 import { DateField, Default, Id } from './decorators.utils';
 import { EOperation } from './meta.utils';
 
@@ -11,6 +10,6 @@ export abstract class BaseModel {
   createdAt: Date;
 
   validate(operation?: EOperation): true | string[] {
-    return true;
+    throw new Error("BaseModel.validate() not overridden correctly during reflection");
   };
 }

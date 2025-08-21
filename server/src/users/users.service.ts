@@ -1,9 +1,11 @@
 import { PasswordHashSync } from './../shared/password-sync.func';
 import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
+import { BaseModel } from 'src/shared/base.model';
 import { BaseService } from 'src/shared/base.service';
 import { Database } from 'src/shared/database.service';
 import {
+  DateField,
   Default,
   Password,
   Property,
@@ -21,7 +23,8 @@ export interface IUserSession {
   agent?: string;
 }
 @Model({ table: 'users' })
-export class _UserModel {
+export class _UserModel extends BaseModel {
+
   @Property()
   name: string;
 
@@ -32,6 +35,10 @@ export class _UserModel {
   @Property()
   @Password()
   password: string;
+
+  @Property()
+  @DateField()
+  dob: Date;
 
   @Property()
   @Default([])

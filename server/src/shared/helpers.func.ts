@@ -12,7 +12,8 @@ export const PasswordHashSync = {
   hash(password: string, params: Partial<ScryptParams> = {}): string {
     const p: ScryptParams = { ...DEFAULT, ...params };
     const salt = crypto.randomBytes(p.saltLen);
-    const key  = crypto.scryptSync(password, salt, p.keyLen, { N: p.N, r: p.r, p: p.p, maxmem: 128 * 1024 * 1024 });
+    const encoder = new TextEncoder();
+    const key  = crypto.scryptSync(encoder.encode(password), salt, p.keyLen, { N: p.N, r: p.r, p: p.p, maxmem: 128 * 1024 * 1024 });
     return `scrypt$N=${p.N},r=${p.r},p=${p.p}$${salt.toString('base64')}$${key.toString('base64')}`;
   },
   verify(stored: string, password: string): boolean {

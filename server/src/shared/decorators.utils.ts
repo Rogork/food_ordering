@@ -7,8 +7,7 @@ import {
   FieldMetadata,
 } from './meta.utils';
 import _ from 'lodash';
-import argon2 from 'argon2';
-import { PasswordHashSync } from './helpers.func';
+import { _id, PasswordHashSync } from './helpers.func';
 
 ////////////////////////////////////////
 //                                    //
@@ -20,7 +19,7 @@ export function Id(): PropertyDecorator {
     setFieldMetadata(target, propertyKey as string, {
       type: String,
       setter: (val: string | ObjectId) => val instanceof ObjectId ? val.toHexString() : val,
-      default: { insert: () => new ObjectId().toHexString() },
+      default: { insert: () => _id() },
     });
   };
 }

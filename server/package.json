@@ -26,7 +26,6 @@
     "@nestjs/platform-express": "^11.0.1",
     "@types/lodash": "^4.17.20",
     "@types/nedb": "^1.8.16",
-    "argon2": "^0.44.0",
     "bson": "^6.10.4",
     "lodash": "^4.17.21",
     "nedb": "^1.8.0",

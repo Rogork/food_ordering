@@ -39,9 +39,7 @@ export interface FieldMetadata<
   type?: TCtor;
 
   /** Phase-specific defaults, or a single factory/value */
-  default?:
-    | FieldDefaults<InstanceType<TCtor>>
-    | DefaultValue<InstanceType<TCtor>>;
+  default?: | FieldDefaults<InstanceType<TCtor>> | DefaultValue<InstanceType<TCtor>>;
 
   /** True accessor reading from instance (e.g. via Symbol-backed store) */
   getter?: (this: any) => any;
@@ -57,10 +55,7 @@ export interface FieldMetadata<
  *  Validators
  * ========================= */
 
-export type ValidatorFn<T = any> = (
-  entity: T,
-  op?: EOperation,
-) => true | string;
+export type ValidatorFn<T = any> = (entity: T, op?: EOperation) => true | string;
 
 export function addModelValidator(target: any, validator: ValidatorFn) {
   const existing: ValidatorFn[] =
@@ -69,9 +64,7 @@ export function addModelValidator(target: any, validator: ValidatorFn) {
   Reflect.defineMetadata(MODEL_VALIDATORS, existing, target);
 }
 
-export function getModelValidators<T extends object>(
-  entity: T,
-): ValidatorFn<T>[] {
+export function getModelValidators<T extends object>(entity: T): ValidatorFn<T>[] {
   // stored on the prototype where decorators run
   const proto = Object.getPrototypeOf(entity);
   return (Reflect.getMetadata(MODEL_VALIDATORS, proto) ||
@@ -88,12 +81,8 @@ export function setFieldMetadata<TCtor extends new (...args: any[]) => any>(
   propertyKey: string,
   data: Partial<FieldMetadata<TCtor>>,
 ) {
-  const fields: Record<string, FieldMetadata<any>> = Reflect.getMetadata(
-    FIELD_METADATA,
-    target,
-  ) || {};
-
-  fields[propertyKey] = { ...(fields[propertyKey] ?? {}), ...data };
+  const fields: Record<string, FieldMetadata<any>> = Reflect.getMetadata(FIELD_METADATA, target) || {};
+  fields[propertyKey] = _.merge(fields[propertyKey] ?? {}, data);
   Reflect.defineMetadata(FIELD_METADATA, fields, target);
 }
 
@@ -137,10 +126,15 @@ export function applyDefaults(
   );
   for (const [fieldName, meta] of Object.entries(allFields)) {
     const current = (entity as any)[fieldName];
-    if (current !== undefined && current !== null) continue;
-    const value = _.isFunction(meta.default)
-      ? meta.default()
-      : (meta.default?.[op] ?? meta.default);
+    if ((current !== undefined && current !== null) || meta.default === undefined) continue;
+    let value: any;
+    if (meta.default[EOperation.NEW] || meta.default[EOperation.INSERT] || meta.default[EOperation.UPDATE]) {
+      if (meta.default[op] !== undefined) {
+        value = _.isFunction(meta.default[op]) ? meta.default[op]() : meta.default[op];
+      }
+    } else {
+      value = _.isFunction(meta.default) ? meta.default() : meta.default;
+    }
     if (value !== undefined) entity[fieldName] = value;
   }
 }
@@ -179,15 +173,13 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
       const existing = Object.getOwnPropertyDescriptor(target.prototype, field);
       if (existing?.get || existing?.set) continue; // already installed for this class
 
+      const backing = Symbol(`$${String(field)}`);
+
       const desc: PropertyDescriptor = { enumerable: true, configurable: true };
-      if (config.getter)
-        desc.get = function () {
-          return config.getter!.call(this);
-        };
-      if (config.setter)
-        desc.set = function (v: any) {
-          return config.setter!.call(this, v);
-        };
+
+      desc.get = config.getter ? function () { return config.getter!.call(this); } : function () { return this[backing]; };
+      desc.set = config.setter ? function (v: any) { this[backing] = config.setter!(v); } : function (v: any) { this[backing] = v; };
+
       Object.defineProperty(target.prototype, field, desc);
     }
 
@@ -196,15 +188,24 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
       // Construct the original class instance
       const self = Reflect.construct(target as any, [], new.target || NewCtor);
 
+      for (const field of Object.keys(mergedFields)) {
+        if (Object.prototype.hasOwnProperty.call(self, field)) {
+          const tmp = (self as any)[field];
+          delete (self as any)[field];   // ensure future reads/writes hit the prototype accessor
+          (self as any)[field] = tmp;    // triggers setter to populate backing storage
+        }
+      }
+
       // Apply NEW-phase defaults first (inherited fields included)
       applyDefaults(self, EOperation.NEW);
 
       // Assign init values for any known field (inherited included)
       if (init) {
         for (const [key, value] of _.entries(init) as [string, any][]) {
-          if (key in mergedFields) (self as any)[key] = value;
+          if (key in mergedFields) self[key] = value;
         }
       }
+
       return self;
     };
 
@@ -229,20 +230,6 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
     // Preserve static properties
     Object.setPrototypeOf(NewCtor, target);
 
-    // Define the modelClass property non-statically
-    Object.defineProperty(NewCtor.prototype, 'modelClass', {
-      get: () => asModelCtor(this),
-      set: () => {},
-      configurable: true,
-    });
-
-    // Define the modelClass property statically
-    Object.defineProperty(NewCtor, 'modelClass', {
-      get: () => asModelCtor(this),
-      enumerable: false,
-      configurable: true,
-    });
-
     // Attach model options to the NEW ctor
     Reflect.defineMetadata(MODEL_METADATA, options, NewCtor);
 
@@ -250,21 +237,6 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
   };
 }
 
-/* =========================
- *  Typing Helpers (Optional)
- * ========================= */
-
-/**
- * A constructor that accepts `(init?: Partial<T>)` and produces `T & { validate(...) }`.
- * Use at the usage site to regain types from a decorated class.
- *
- *   @Model()
- *   class User { ... }
- *
- *   export const UserModel = asModelCtor<User>(User);
- *   const u = new UserModel({ username: 'john' });
- *   u.validate(EOperation.INSERT);
- */
 export type ModelCtor<T> = new (init?: Partial<T>) => T & {
   validate(operation?: EOperation): true | string[];
 };

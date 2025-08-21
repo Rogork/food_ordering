@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
 import { BaseModel } from 'src/shared/base.model';
 import { BaseService } from 'src/shared/base.service';
-import { Database } from 'src/shared/database.service';
+import crypto from 'node:crypto';
 import {
   DateField,
   Default,
@@ -12,7 +12,7 @@ import {
   Required,
 } from 'src/shared/decorators.utils';
 import { _id } from 'src/shared/helpers.func';
-import { asModelCtor, Model, ModelCtor } from 'src/shared/meta.utils';
+import { asModelCtor, Model } from 'src/shared/meta.utils';
 
 export interface IUserSession {
   token: string;
@@ -46,14 +46,13 @@ export class _UserModel extends BaseModel {
 
   generateSession(ip: string = '127.0.0.1', device: string = 'Unknown', agent: string = 'Unknown'): IUserSession {
     const session = {
-      token: _id(),
+      token: crypto.randomBytes(64).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,''),
       createdAt: new Date(),
       lastUsed: new Date(),
       ip,
       device,
       agent,
     };
-    this.sessions.push(session);
     return session;
   }
 
@@ -84,16 +83,21 @@ export class UsersService extends BaseService<_UserModel> {
     return count !== 0;
   }
 
-  async register(params: Partial<Omit<_UserModel, '_id'|'createdAt'>>) {
+  async register(params: { email: string, name?: string, password: string }, ext?: { ip?: string, device?: string, agent?: string}) {
     const user = new UserModel(params);
-    return this.create(user);
+    const session = user.generateSession(ext?.ip, ext?.device, ext?.agent);
+    user.sessions.push(session);
+    await this.create(user);
+    return { user, session };
   }
 
-  async signIn(email: string, password: string, ext?: { ip: string, device: string, agent: string}) {
+  async signIn(email: string, password: string, ext?: { ip?: string, device?: string, agent?: string}) {
     const user = await this.findOne({ email });
     if (!user) throw new Error("User not found");
-    if (!PasswordHashSync.verify(user.password, password)) throw new Error("Password mismatch");
+    if (!PasswordHashSync.verify(user.password, password)) throw "Passwsord mismatch";
     const session = user.generateSession(ext?.ip, ext?.device, ext?.agent);
+    user.sessions.push(session);
+    await this.update({ _id: user._id }, { sessions: { $push: session } });
     return { user, session };
   }
 

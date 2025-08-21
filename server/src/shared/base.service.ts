@@ -27,7 +27,7 @@ export abstract class BaseService<T> {
     return this.db.find(this.Model, query);
   }
 
-  protected async update(query: Partial<T>|any, update: Partial<T>, opts?: { multi?: boolean; upsert?: boolean }) {
+  protected async update(query: Partial<T>|any, update: Partial<T>|any, opts: { multi?: boolean; upsert?: boolean } = { upsert: false }) {
     return this.db.update(this.Model, query, update, opts);
   }
 

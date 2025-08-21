@@ -25,7 +25,7 @@ export class APIService {
       if (!_.isEmpty(parameters)) {
         fullUrl += '?' + _.map(parameters, (v, k) => `${k}=${v}`).join('&');
       }
-      fetch(fullUrl)
+      fetch(fullUrl, options)
         .then(this.handleResponse<T>(observer))
         .catch((err) => {
           observer.error(err);

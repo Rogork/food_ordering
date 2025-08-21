@@ -11,10 +11,9 @@ export enum EUserRole {
 }
 
 export interface IUserSession {
-  _id: string;
   token: string;
   createdAt: Date;
-  lastUsed: Date;
+  lastUsed?: Date;
   ip?: string;
   device?: string;
   agent?: string;
@@ -25,7 +24,6 @@ export interface IUser {
   name: string;
   email: string;
   createdAt: Date;
-  session: IUserSession;
   avatar?: string;
   role?: EUserRole;
 }
@@ -67,14 +65,14 @@ export class AuthService {
   }
 
   login(email: string, password: string) {
-    return this.api.requestPOST<IUser>('/auth/login', { email, password }).pipe(
+    return this.api.requestPOST<{ session: IUserSession, user: IUser}>('/auth/login', { email, password }).pipe(
       map(({ code, msg, data }) => {
         if (code !== 200) {
           this.alerts.open(`Error encountered while logging in: ${msg ?? 'UNSPECIFIED'}`, { label: 'Login Error' }).subscribe();
           return false;
         }
-        console.log(data);
-        this.currentUser.set(data ?? null);
+        localStorage.setItem('token', data!.session.token);
+        this.currentUser.set(data!.user);
         return true;
       })
     );

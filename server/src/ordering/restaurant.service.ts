@@ -67,7 +67,7 @@ export class RestaurantService extends BaseService<_RestaurantModel> {
     if (!restaurant) throw new Error('Restaurant not found');
     section._id = _id();
     restaurant.menu.push(section);
-    const result = await this.update({ _id: restaurantId }, restaurant);
+    const result = await this.update({ _id: restaurantId }, { $set: restaurant });
     return result === 1;
   }
 
@@ -81,7 +81,7 @@ export class RestaurantService extends BaseService<_RestaurantModel> {
     if (!section) throw new Error('Restaurant menu section not found');
     item._id = _id();
     section.items.push(item);
-    const result = await this.update({ _id: restaurantId }, restaurant);
+    const result = await this.update({ _id: restaurantId }, { $set: restaurant });
     return result === 1;
   }
 
@@ -99,7 +99,7 @@ export class RestaurantService extends BaseService<_RestaurantModel> {
     );
     if (itemIndex === -1) throw new Error('Menu item not found');
     section.items[itemIndex] = item;
-    const result = await this.update({ _id: restaurantId }, restaurant);
+    const result = await this.update({ _id: restaurantId }, { $set: restaurant });
     return result === 1;
   }
 
@@ -121,7 +121,7 @@ export class RestaurantService extends BaseService<_RestaurantModel> {
     );
     if (itemIndex === -1) throw new Error('Menu item not found');
     section.items.splice(itemIndex, 1);
-    const result = await this.update({ _id: restaurantId }, restaurant);
+    const result = await this.update({ _id: restaurantId }, { $set: restaurant });
     return result === 1;
   }
 }

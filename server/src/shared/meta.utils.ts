@@ -38,6 +38,9 @@ export interface FieldMetadata<
   /** Runtime constructor (e.g., Date, ObjectId, String, Number) */
   type?: TCtor;
 
+  /** Name of the property when it is saved into the database*/
+  property?: string;
+
   /** Phase-specific defaults, or a single factory/value */
   default?: | FieldDefaults<InstanceType<TCtor>> | DefaultValue<InstanceType<TCtor>>;
 
@@ -95,7 +98,7 @@ function getOwnFieldMetadata(proto: any): Record<string, FieldMetadata<any>> {
  * Merge field metadata across the prototype chain so derived classes
  * see base fields. Child overrides take precedence.
  */
-function getMergedFieldMetadataFromProto(
+export function getMergedFieldMetadataFromProto(
   proto: any,
 ): Record<string, FieldMetadata<any>> {
   const chain: any[] = [];
@@ -177,7 +180,7 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
 
       const desc: PropertyDescriptor = { enumerable: true, configurable: true };
 
-      desc.get = config.getter ? function () { return config.getter!.call(this); } : function () { return this[backing]; };
+      desc.get = function () { return this[backing]; };
       desc.set = config.setter ? function (v: any) { this[backing] = config.setter!(v); } : function (v: any) { this[backing] = v; };
 
       Object.defineProperty(target.prototype, field, desc);
@@ -201,8 +204,15 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
 
       // Assign init values for any known field (inherited included)
       if (init) {
-        for (const [key, value] of _.entries(init) as [string, any][]) {
-          if (key in mergedFields) self[key] = value;
+        if(init instanceof target) {
+          for(const key in mergedFields) {
+            const value = init[key];
+            if (value !== undefined) self[key] = _.cloneDeep(value);
+          }
+        } else {
+          for (const [key, value] of _.entries(init) as [string, any][]) {
+            if (key in mergedFields) self[key] = value;
+          }
         }
       }
 
@@ -227,6 +237,16 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
       return errors.length === 0 ? true : errors;
     };
 
+    NewCtor.prototype.toDocument = function () {
+      const fieldsMeta = getMergedFieldMetadataFromProto(this);
+      const document: { [key: string]: any } = {};
+      for (const field in fieldsMeta) {
+        const property = fieldsMeta[field].property;
+        if (_.isString(property) && property.length > 0) document[property] = this[field];
+      }
+      return document;
+    }
+
     // Preserve static properties
     Object.setPrototypeOf(NewCtor, target);
 
@@ -239,6 +259,7 @@ export function Model(options: ModelOptions = {}): ClassDecorator {
 
 export type ModelCtor<T> = new (init?: Partial<T>) => T & {
   validate(operation?: EOperation): true | string[];
+  toDocument(): { [key: string]: any };
 };
 
 export function asModelCtor<T>(cls: any): ModelCtor<T> {

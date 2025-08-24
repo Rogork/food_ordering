@@ -1,5 +1,5 @@
 import { ModelCtor } from 'src/shared/meta.utils';
-import { Database } from './database.service';
+import { Database, IUpdateOperation } from './database.service';
 import { Inject } from '@nestjs/common';
 
 export abstract class BaseService<T> {
@@ -9,13 +9,13 @@ export abstract class BaseService<T> {
 
   protected abstract get Model(): ModelCtor<T>;
 
-  protected async create(init: Partial<T>) {
-    const instance = new this.Model(init);
+  protected async create(init: Partial<T>|T) {``
+    const instance = init instanceof this.Model ? init : new this.Model(init);
     return this.db.insert(instance);
   }
 
   protected async insertMany(inits: Partial<T>[]) {
-    const instances = inits.map(i => new this.Model(i));
+    const instances = inits.map(i => i instanceof this.Model ? i : new this.Model(i));
     return this.db.insertMany(instances);
   }
 
@@ -27,7 +27,7 @@ export abstract class BaseService<T> {
     return this.db.find(this.Model, query);
   }
 
-  protected async update(query: Partial<T>|any, update: Partial<T>|any, opts: { multi?: boolean; upsert?: boolean } = { upsert: false }) {
+  protected async update(query: Partial<T>|any, update: IUpdateOperation<T>, opts: { multi?: boolean; upsert?: boolean } = { upsert: false }) {
     return this.db.update(this.Model, query, update, opts);
   }
 

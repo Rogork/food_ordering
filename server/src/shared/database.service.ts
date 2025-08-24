@@ -10,7 +10,24 @@ import {
   EOperation,
   ModelCtor,
   applyDefaults,
+  FieldMetadata,
 } from './meta.utils';
+import _ from 'lodash';
+
+export enum EUpdateOperators {
+  Set = '$set',
+  Unset = '$unset',
+  Push = '$push',
+  Pop = '$pop',
+  Pull = '$pull',
+  AddToSet = '$addToSet',
+  Each = '$each',
+  Slice = '$slice',
+}
+
+export type IUpdateOperation<T> = {
+  [op in EUpdateOperators]?: Partial<T>|any;
+}
 
 type ModelInstance<T> = T & { validate(op: EOperation): true | string[] };
 
@@ -54,7 +71,7 @@ export class Database {
   }
 
   /** Read field metadata defined for a model (prototype-level) */
-  private getFieldsForCtor(ctor: Function): Record<string, unknown> {
+  private getFieldsForCtor(ctor: Function): Record<string, FieldMetadata> {
     return Reflect.getMetadata(FIELD_METADATA, (ctor as any).prototype) || {};
   }
 
@@ -65,19 +82,13 @@ export class Database {
 
     const doc: Record<string, any> = {};
 
-    // 1) For every known field from metadata, read its value via getter
-    for (const key of Object.keys(fields)) {
+    // populate doc based on fields meta property value
+    _.each(fields, (meta, key) => {
+      const property = meta.property;
+      if (!property || property.length === 0) return true;
       const val = (entity as any)[key];
-      if (val !== undefined) doc[key] = val;
-    }
-
-    // 2) Include any own enumerable props not covered above (defensive)
-    for (const key of Object.keys(entity as any)) {
-      if (!(key in doc)) {
-        doc[key] = (entity as any)[key];
-      }
-    }
-
+      if (val !== undefined) doc[property] = val;
+    });
     return doc;
   }
 
@@ -186,7 +197,7 @@ export class Database {
   public async update<T>(
     ctor: ModelCtor<T>,
     query: Record<string, any>,
-    update: Record<string, any>,
+    update: IUpdateOperation<T>,
     options: { multi?: boolean; upsert?: boolean } = {},
   ): Promise<number> {
     const datastore = await this.loadByCtor(ctor);

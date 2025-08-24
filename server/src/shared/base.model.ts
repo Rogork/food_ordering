@@ -1,10 +1,12 @@
-import { DateField, Default, Id } from './decorators.utils';
+import { DateField, Default, Id, Property } from './decorators.utils';
 import { EOperation } from './meta.utils';
 
 export abstract class BaseModel {
+  @Property()
   @Id()
   _id: string;
 
+  @Property()
   @DateField()
   @Default(() => new Date())
   createdAt: Date;

@@ -1,13 +1,13 @@
-import { Body, Controller, Get, Headers, Ip, Post, Query, Request, Session } from '@nestjs/common';
-import { RestaurantModel } from 'src/ordering/restaurant.service';
+import { Body, Controller, Get, Header, Headers, Ip, Post, Query, Request, Session } from '@nestjs/common';
+import express from 'express';
 import _ from "lodash";
-import { _UserModel, UserModel, UsersService } from 'src/users/users.service';
+import { _UserModel, UsersService } from 'src/users/users.service';
 @Controller('auth')
 export class AuthController {
 
     constructor(private userService: UsersService,) { }
 
-    getUserInfo(headers: Headers, ipFallback: string) {
+    getUserInfo(sessionId: string, headers: Headers, ipFallback: string) {
         const xff = headers['x-forwarded-for'];
         const ip = (headers['cf-connecting-ip'] as string) ||
             (headers['true-client-ip'] as string) ||
@@ -17,51 +17,46 @@ export class AuthController {
             null;
         const userAgent = (headers['user-agent'] as string) ?? null;
         const deviceName = (headers['x-device-name'] as string) || (headers['x-client-name'] as string) || '';
-        return { ip: ip, device: deviceName, agent: userAgent }
-    }
-
-    @Get('test')
-    public async test(@Query('name') name: string) {
-        const user = new UserModel({ email: 'lol', password: '12345', dob: ('1990-01-01' as any) });
-        // const user = new _UserModel();
-        // user.email = 'lol';
-        // user.password = '12345';
-        // user.dob = ('1990-01-01' as any);
-        console.log(user);
-        return { code: 200, data: { model: user } };
+        return { sessionId: sessionId, ip: ip, device: deviceName, agent: userAgent }
     }
 
     @Get('get-details')
+    @Header('Cache-Control', 'no-cache')
     public async getDetails(@Headers('Authorization') token: string) {
         token = _.trimStart(token, 'Bearer ');
         const details = await this.userService.findUserBySessionToken(token);
-        if (details === undefined) return { code: 401 };
+        if (details === null) return { code: 401 };
         return { code: 200, data: details };
     }
 
     @Get('email-exists')
+    @Header('Cache-Control', 'no-cache')
     public async emailExists(@Query('email') email: string) {
         const exists = await this.userService.emailExists(email);
         return { code: exists ? 200 : 404 };
     }
 
     @Post('register')
-    public async register(@Body() user: { name?: string, email: string, password: string }, @Headers() headers: Headers, @Ip() ip: string) {
-        const userData = await this.userService.register(user, this.getUserInfo(headers, ip));
+    @Header('Cache-Control', 'no-cache')
+    public async register(@Body() user: { name?: string, email: string, password: string }, @Request() request: express.Request, @Headers() headers: Headers, @Ip() ip: string) {
+        const userData = await this.userService.register(user, this.getUserInfo(request.sessionID, headers, ip));
         return { code: 200, data: userData };
     }
 
     @Post('login')
-    public async login(@Body() { email, password }: { email: string, password: string }, @Headers() headers: Headers, @Ip() ip: string) {
+    @Header('Cache-Control', 'no-cache')
+    public async login(@Body() { email, password }: { email: string, password: string }, @Request() request: express.Request, @Headers() headers, @Ip() ip: string) {
         try {
-            const user = await this.userService.signIn(email, password, this.getUserInfo(headers, ip));
+            const user = await this.userService.signIn(email, password, this.getUserInfo(request.sessionID, headers, ip));
             return { code: 200, data: user };
         } catch (e) {
-            return { code: 400, msg: e };
+            console.log(e);
+            return { code: 400, msg: 'Unknown error' };
         }
     }
 
     @Post('logout')
+    @Header('Cache-Control', 'no-cache')
     public async logout(@Session() session) {
         if (!session?.token) return { code: 200 };
         await this.userService.logout(session.token);

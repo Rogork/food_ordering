@@ -35,7 +35,7 @@ export class AuthService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly api = inject(APIService);
 
-  constructor() {}
+  constructor() { }
 
   initialized = signal(false);
   currentUser = signal<IUser | null>(null);
@@ -43,9 +43,14 @@ export class AuthService {
   init() {
     if (this.initialized() === true || !isPlatformBrowser(this.platformId)) return of(true);
     const token = localStorage.getItem('token');
-    return this.api.requestGET<IUser>('/auth/get-details', {}, { headers: { Authorization: `Bearer ${token}`}}).pipe(
+    if (!token) {
+      this.initialized.set(true);
+      return of(true);
+    }
+    return this.api.requestGET<IUser>('/auth/get-details', {}, { headers: { Authorization: `Bearer ${token}` } }).pipe(
       map(({ code, data }) => {
         if (code === 200) this.currentUser.set(data ?? null);
+        else localStorage.removeItem('token');
         this.initialized.set(true);
         return true;
       })
@@ -65,7 +70,7 @@ export class AuthService {
   }
 
   login(email: string, password: string) {
-    return this.api.requestPOST<{ session: IUserSession, user: IUser}>('/auth/login', { email, password }).pipe(
+    return this.api.requestPOST<{ session: IUserSession, user: IUser }>('/auth/login', { email, password }).pipe(
       map(({ code, msg, data }) => {
         if (code !== 200) {
           this.alerts.open(`Error encountered while logging in: ${msg ?? 'UNSPECIFIED'}`, { label: 'Login Error' }).subscribe();
@@ -79,13 +84,14 @@ export class AuthService {
   }
 
   register(email: string, password: string) {
-    return this.api.requestPOST('/auth/register', { email, password }).pipe(
+    return this.api.requestPOST<{ user: IUser, session: IUserSession }>('/auth/register', { email, password }).pipe(
       map(({ code, msg, data }) => {
         if (code !== 200) {
-          this.alerts.open(`Error encountered while registering: ${msg ?? 'UNSPECIFIED'}`, { label: 'Registration Error'}).subscribe();
+          this.alerts.open(`Error encountered while registering: ${msg ?? 'UNSPECIFIED'}`, { label: 'Registration Error' }).subscribe();
           return false;
         }
-        this.currentUser.set(data ?? null);
+        localStorage.setItem('token', data!.session.token);
+        this.currentUser.set(data!.user ?? null);
         return true;
       })
     );

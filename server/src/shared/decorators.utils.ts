@@ -7,7 +7,8 @@ import {
   FieldMetadata,
 } from './meta.utils';
 import _ from 'lodash';
-import { _id, PasswordHashSync } from './helpers.func';
+import { _id } from './helpers.func';
+import { PasswordHashSync } from './password-sync.func';
 
 ////////////////////////////////////////
 //                                    //
@@ -33,11 +34,24 @@ export function NumberField(): PropertyDecorator {
   };
 }
 
+export function StringField(): PropertyDecorator {
+  return (target, propertyKey) => {
+    setFieldMetadata(target, propertyKey as string, {
+      type: String,
+      setter: (val: string | number) => val !== undefined ? _.toString(val) : undefined,
+    });
+  };
+}
+
 export function DateField(): PropertyDecorator {
   return (target, propertyKey) => {
     setFieldMetadata(target, propertyKey as string, {
       type: Date,
-      setter: (val: string | number | Date) => new Date(val),
+      setter: (val: string | number | Date) => {
+        if (_.isDate(val)) return val;
+        if (_.isNumber(val) || _.isString(val)) return new Date(val);
+        return undefined;
+      },
     });
   };
 }
@@ -59,7 +73,7 @@ export function Password(): PropertyDecorator {
   return (target, propertyKey) => {
     setFieldMetadata(target, propertyKey as string, {
       type: String,
-      setter: (val: string) => PasswordHashSync.hash(val),
+      setter: (val: string) => _.isString(val) ? (PasswordHashSync.isHash(val) ? val : PasswordHashSync.hash(val)) : undefined,
     });
   };
 }
@@ -119,6 +133,8 @@ export function Default<T extends any>(
 
 export function Property(opts: { meta?: Partial<FieldMetadata> } = {}): PropertyDecorator {
   return (target, propertyKey) => {
-    setFieldMetadata(target, propertyKey as string, opts.meta || {});
+    opts.meta = opts.meta || {};
+    opts.meta.property = opts.meta.property || propertyKey as string;
+    setFieldMetadata(target, propertyKey as string, opts.meta);
   };
 }

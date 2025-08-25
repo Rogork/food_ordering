@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Header, Headers, Ip, Post, Query, Request, Session } from '@nestjs/common';
+import { Body, Controller, Get, Header, Headers, Ip, Post, Query, Req, Session } from '@nestjs/common';
 import express from 'express';
 import _ from "lodash";
 import { _UserModel, UsersService } from 'src/users/users.service';
@@ -22,11 +22,11 @@ export class AuthController {
 
     @Get('get-details')
     @Header('Cache-Control', 'no-cache')
-    public async getDetails(@Headers('Authorization') token: string) {
-        token = _.trimStart(token, 'Bearer ');
-        const details = await this.userService.findUserBySessionToken(token);
-        if (details === null) return { code: 401 };
-        return { code: 200, data: details };
+    public async getDetails(@Session() session) {
+        if (session.user !== false && session.userSession !== false) {
+            return { code: 200, data: { user: session.user, session: session.userSession } };
+        }
+        return { code: 401 };
     }
 
     @Get('email-exists')
@@ -38,14 +38,14 @@ export class AuthController {
 
     @Post('register')
     @Header('Cache-Control', 'no-cache')
-    public async register(@Body() user: { name?: string, email: string, password: string }, @Request() request: express.Request, @Headers() headers: Headers, @Ip() ip: string) {
+    public async register(@Body() user: { name?: string, email: string, password: string }, @Req() request: express.Request, @Headers() headers: Headers, @Ip() ip: string) {
         const userData = await this.userService.register(user, this.getUserInfo(request.sessionID, headers, ip));
         return { code: 200, data: userData };
     }
 
     @Post('login')
     @Header('Cache-Control', 'no-cache')
-    public async login(@Body() { email, password }: { email: string, password: string }, @Request() request: express.Request, @Headers() headers, @Ip() ip: string) {
+    public async login(@Body() { email, password }: { email: string, password: string }, @Req() request: express.Request, @Headers() headers, @Ip() ip: string) {
         try {
             const user = await this.userService.signIn(email, password, this.getUserInfo(request.sessionID, headers, ip));
             return { code: 200, data: user };

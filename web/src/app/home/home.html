@@ -1,42 +1,51 @@
-<!-- Replace with router-outlet content -->
-<h1 class="text-lg font-semibold text-neutral-100">Home</h1>
-<p class="mt-1 text-neutral-400 text-sm">Active orders overview</p>
+<div class="w-full max-w-4xl m-auto">
 
-<!-- Example content block -->
-<div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-  <article class="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-sm font-medium">Team Lunch — Today</h2>
-      <span class="inline-flex items-center rounded-md bg-orange-600/20 px-2 py-0.5 text-xs text-orange-400">
-        Active
-      </span>
+  <div class="glass-morphism rounded-xl p-5 pulse-glow relative">
+
+    @for(order of orders(); track order._id) {
+    <div class="absolute -top-5 left-4 flex-shrink-0 z-10">
+      <div class="bg-blue-900 text-blue-300 px-4 py-2 rounded-full text-sm font-medium border border-blue-600">
+        Team Lunch Group
+      </div>
     </div>
-    <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-      <div>
-        <dt class="text-neutral-400">Restaurant</dt>
-        <dd>Al Tikka</dd>
+    <!-- Main Content Row -->
+    <div class="flex items-center gap-8 relative">
+
+      <!-- Left: Restaurant Info -->
+      <div class="flex items-center gap-4 flex-1 min-w-0">
+        <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=56&h=56&fit=crop&crop=center" alt="Al Tikka" class="w-14 h-14 rounded-xl border-2 border-orange-500/30 flex-shrink-0">
+        <div class="min-w-0 flex-1">
+          <h3 class="text-xl font-bold text-white mb-1 truncate">{{ order.restaurant!.name }}</h3>
+          <div class="flex items-center gap-4 text-xs text-gray-500 mt-1">
+            <span>5 <tui-icon style="font-size: 1.25rem" icon="user-round" /></span>
+            <span>23 <tui-icon style="font-size: 1.25rem" icon="hamburger" /></span>
+          </div>
+          <div class="flex items-center gap-4 text-xs text-gray-400 italic mt-2">
+            <span>Created by <b>{{ order.createdBy!.name }}</b> at <b>{{ order.createdAt|date:'shortTime' }}</b> {{ dayString(order!.createdAt!) }}</span>
+          </div>
+        </div>
       </div>
-      <div>
-        <dt class="text-neutral-400">Closes</dt>
-        <dd>1:30 PM</dd>
+
+      <div class="flex items-center gap-6 flex-shrink-0">
+        <div class="flex flex-row items-center bg-orange-600/20 border border-orange-500/30 rounded-lg p-3 text-center min-w-[100px]">
+          <div class="text-orange-300 text-lg mr-1">Order closing in</div>
+          <div class="countdown-tick">
+            <span class="text-orange-400 font-bold text-lg">18:42</span>
+          </div>
+          <div class="mt-2">
+            <div class="w-full bg-orange-900/30 rounded-full h-1">
+              <div class="bg-gradient-to-r from-orange-600 to-orange-400 h-1 rounded-full transition-all duration-1000" style="width: 65%;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <button class="bg-orange-600 hover:bg-orange-500 min-h-full text-white font-semibold py-2.5 px-5 rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg hover:shadow-orange-500/25 text-sm">
+            <tui-icon icon="chevron-right"></tui-icon>
+          </button>
+        </div>
       </div>
-      <div>
-        <dt class="text-neutral-400">Items</dt>
-        <dd>23</dd>
-      </div>
-      <div>
-        <dt class="text-neutral-400">Total</dt>
-        <dd>BHD 89.500</dd>
-      </div>
-    </dl>
-    <div class="mt-3 flex gap-2">
-      <button class="rounded-md bg-orange-600 px-3 py-1.5 text-sm font-medium text-black hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500">
-        View
-      </button>
-      <button class="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500">
-        Manage
-      </button>
     </div>
-  </article>
-  <!-- Duplicate cards as needed -->
+    }
+
+  </div>
 </div>

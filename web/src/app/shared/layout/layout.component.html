@@ -5,7 +5,7 @@
 <div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
 
   <!-- Main Content Area -->
-  <main class="lg:ml-64 pt-16 min-h-screen">
+  <main class="lg:ml-64 pt-16 min-h-screen flex flex-col">
 
     <!-- Page Header with Breadcrumbs -->
     <div class="bg-gray-800/50 backdrop-blur-sm border-b border-white/10 px-6 py-4">
@@ -34,7 +34,7 @@
     </div>
 
     <!-- Content Area with Background Effects -->
-    <div class="relative overflow-hidden">
+    <div class="relative overflow-hidden flex-auto">
       <!-- Subtle background pattern -->
       <div class="absolute inset-0 opacity-5">
         <div class="absolute inset-0" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 20px 20px;"></div>
@@ -49,7 +49,7 @@
       </div>
 
       <!-- Router Outlet - Your page content goes here -->
-      <div class="relative z-10 p-6">
+      <div class="relative z-10 p-6 container m-auto">
         <router-outlet></router-outlet>
       </div>
     </div>

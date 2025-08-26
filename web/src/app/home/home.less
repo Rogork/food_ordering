@@ -1,22 +1,16 @@
 @keyframes pulse-glow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.2), 0 4px 15px rgba(0, 0, 0, 0.3);
   }
-
   50% {
-    box-shadow: 0 0 30px rgba(34, 197, 94, 0.4);
+    box-shadow: 0 0 30px rgba(34, 197, 94, 0.4), 0 8px 25px rgba(0, 0, 0, 0.4);
   }
 }
 
 @keyframes countdown-tick {
-
-  0%,
-  100% {
+  0%, 100% {
     transform: scale(1);
   }
-
   50% {
     transform: scale(1.05);
   }
@@ -31,7 +25,152 @@
 }
 
 .glass-morphism {
-  background: rgba(17, 24, 39, 0.75);
-  backdrop-filter: blur(16px);
+  background: rgba(17, 24, 39, 0.85);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+
+  &:hover {
+    background: rgba(17, 24, 39, 0.9);
+    transform: translateY(-2px);
+  }
+}
+
+// Order Action Button Styles
+.order-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  min-width: 64px;
+  height: 100%;
+
+  &.active {
+    background: linear-gradient(135deg, rgb(251, 146, 60), rgb(251, 113, 133));
+    color: white;
+    box-shadow: 0 4px 15px rgba(251, 146, 60, 0.3);
+
+    &:hover {
+      transform: translateY(-1px) scale(1.02);
+      box-shadow: 0 6px 20px rgba(251, 146, 60, 0.4);
+    }
+
+    &:active {
+      transform: translateY(0) scale(0.98);
+    }
+  }
+
+  &.disabled {
+    background: rgba(107, 114, 128, 0.3);
+    color: rgb(156, 163, 175);
+    cursor: not-allowed;
+
+    &:hover {
+      transform: none;
+      box-shadow: none;
+    }
+  }
+}
+
+// Enhanced Card Interactions
+.cursor-pointer {
+  cursor: pointer;
+
+  .glass-morphism {
+    &:hover {
+      border-color: rgba(251, 146, 60, 0.3) !important;
+    }
+  }
+}
+
+// Status-based styling
+.opacity-75 {
+  opacity: 0.75;
+
+  .pulse-glow {
+    animation: none;
+  }
+}
+
+// Improved responsive design
+@media (max-width: 768px) {
+  .glass-morphism {
+    padding: 1rem;
+  }
+
+  .order-action-btn {
+    min-width: 100px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+}
+
+// Focus states for accessibility
+.order-action-btn:focus-visible {
+  outline: 2px solid rgb(251, 146, 60);
+  outline-offset: 2px;
+}
+
+.glass-morphism:focus-within {
+  border-color: rgba(251, 146, 60, 0.5);
+}
+
+article:focus-visible {
+  outline: 2px solid rgb(251, 146, 60);
+  outline-offset: 4px;
+  border-radius: 0.75rem;
+}
+
+// Home container styles
+.home-container {
+  padding: 1rem;
+  min-height: 100vh;
+}
+
+// Refresh button
+.refresh-btn {
+  padding: 0.75rem;
+  background: rgba(17, 24, 39, 0.75);
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  border-radius: 0.5rem;
+  color: rgb(251, 146, 60);
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(251, 146, 60, 0.1);
+    border-color: rgba(251, 146, 60, 0.5);
+    transform: rotate(180deg);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgb(251, 146, 60);
+    outline-offset: 2px;
+  }
+}
+
+// Empty state styling
+.text-6xl {
+  font-size: 4rem;
+  line-height: 1;
+}
+
+// Animation improvements
+@media (prefers-reduced-motion: reduce) {
+  .pulse-glow,
+  .countdown-tick,
+  .refresh-btn:hover {
+    animation: none;
+    transform: none;
+  }
+
+  .order-action-btn:hover,
+  .glass-morphism:hover {
+    transform: none;
+  }
 }

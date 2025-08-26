@@ -1,0 +1,15 @@
+<div class="countdown-container" [class.expired]="isExpired()">
+  <div class="countdown-text">
+    <span class="label">{{ isExpired() ? 'Order Closed' : 'Order closing in' }}</span>
+    <div class="countdown-tick" [class.expired]="isExpired()">
+      <span class="time-display" [class.expired-time]="isExpired()">
+        {{ isExpired() ? 'CLOSED' : formatTime() }}
+      </span>
+    </div>
+  </div>
+  <div class="progress-container">
+    <div class="progress-bar">
+      <div class="progress-fill" [style.width.%]="progressPercentage()" [class.expired]="isExpired()"></div>
+    </div>
+  </div>
+</div>

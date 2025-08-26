@@ -1,51 +1,94 @@
-@for(order of orders(); track order._id) {
-<div class="w-full max-w-4xl m-auto mb-8">
+<div class="home-container" role="main" aria-label="Active food orders">
 
-  <div class="glass-morphism rounded-xl p-5 pulse-glow relative">
+  @if (isLoading()) {
+  <app-loading-state message="Loading your orders..."></app-loading-state>
+  } @else {
 
-    <div class="absolute -top-5 left-4 flex-shrink-0 z-10">
-      <div class="bg-blue-900 text-blue-300 px-4 py-2 rounded-full text-sm font-medium border border-blue-600">
-        {{ order.group!.name }}
+  <!-- Header Section -->
+  <div class="w-full max-w-4xl m-auto mb-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-white mb-2">Active Orders</h1>
+        <p class="text-gray-400">Join an active order or create one yourself</p>
       </div>
+      <button (click)="refreshOrders()" class="refresh-btn" aria-label="Refresh orders" type="button">
+        <tui-icon icon="refresh-cw"></tui-icon>
+      </button>
     </div>
-    <!-- Main Content Row -->
-    <div class="flex items-center gap-8 relative">
+  </div>
 
-      <!-- Left: Restaurant Info -->
-      <div class="flex items-center gap-4 flex-1 min-w-0">
-        <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=56&h=56&fit=crop&crop=center" alt="Al Tikka" class="w-14 h-14 rounded-xl border-2 border-orange-500/30 flex-shrink-0">
-        <div class="min-w-0 flex-1">
-          <h3 class="text-xl font-bold text-white mb-1 truncate">{{ order.restaurant!.name }}</h3>
-          <div class="flex items-center gap-4 text-xs text-gray-500 mt-1">
-            <span>5 <tui-icon style="font-size: 1.25rem" icon="user-round" /></span>
-            <span>23 <tui-icon style="font-size: 1.25rem" icon="hamburger" /></span>
-          </div>
-          <div class="flex items-center gap-4 text-xs text-gray-400 italic mt-2">
-            <span>Created by <b>{{ order.createdBy!.name }}</b> at <b>{{ order.createdAt|date:'shortTime' }}</b> {{ dayString(order!.createdAt!) }}</span>
-          </div>
+  <!-- Orders List -->
+  @if (orders().length === 0) {
+  <div class="w-full max-w-4xl m-auto text-center py-12">
+    <tui-icon icon="shopping-bag" class="text-gray-500 text-6xl mb-4"></tui-icon>
+    <h2 class="text-xl font-semibold text-gray-300 mb-2">No active orders</h2>
+    <p class="text-gray-500">Check back later or create a new order</p>
+  </div>
+  } @else {
+  @for(order of orders(); track order._id) {
+  <article class="w-full max-w-4xl m-auto mb-8" [class.cursor-pointer]="isOrderActive(order)" [class.opacity-75]="!isOrderActive(order)" [attr.aria-label]="getOrderStatusText(order)" (click)="onOrderClick(order)" (keydown.enter)="onOrderClick(order)" (keydown.space)="onOrderClick(order)" tabindex="0">
+
+    <div class="glass-morphism rounded-xl p-6 pulse-glow relative hover:shadow-xl transition-all duration-300" [ngClass]="isOrderActive(order) ? 'class.border-green-500/30': 'class.border-red-500/30'">
+
+      <!-- Status Badge -->
+      <div class="absolute -top-3 left-4 flex items-center gap-2 z-10">
+        <div class="bg-blue-900 text-blue-300 px-3 py-1.5 rounded-full text-sm font-medium border border-blue-600">
+          {{ order.group!.name }}
         </div>
+        @if (!isOrderActive(order)) {
+        <div class="bg-red-900 text-red-300 px-3 py-1.5 rounded-full text-xs font-medium border border-red-600" aria-label="Order status: closed">
+          CLOSED
+        </div>
+        }
       </div>
 
-      <div class="flex items-center gap-6 flex-shrink-0">
-        <div class="flex flex-row items-center bg-orange-600/20 border border-orange-500/30 rounded-lg p-3 text-center min-w-[100px]">
-          <div class="text-orange-300 text-lg mr-1">Order closing in</div>
-          <div class="countdown-tick">
-            <span class="text-orange-400 font-bold text-lg">18:42</span>
-          </div>
-          <div class="mt-2">
-            <div class="w-full bg-orange-900/30 rounded-full h-1">
-              <div class="bg-gradient-to-r from-orange-600 to-orange-400 h-1 rounded-full transition-all duration-1000" style="width: 65%;"></div>
+      <!-- Main Content Row -->
+      <div class="flex items-center gap-8 relative mt-2">
+
+        <!-- Left: Restaurant Info -->
+        <div class="flex items-center gap-4 flex-1 min-w-0">
+          <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=64&h=64&fit=crop&crop=center" [alt]="'Logo for ' + order.restaurant!.name" class="w-16 h-16 rounded-xl border-2 border-orange-500/30 flex-shrink-0 object-cover" role="img">
+          <div class="min-w-0 flex-1">
+            <h2 class="text-xl font-bold text-white mb-2 truncate">{{ order.restaurant!.name }}</h2>
+
+            <!-- Stats Row -->
+            <div class="flex items-center gap-6 text-sm text-gray-300 mb-2" role="group" aria-label="Order statistics">
+              <div class="flex items-center gap-2">
+                <tui-icon icon="user-round" class="text-blue-400" style="font-size: 1rem" aria-hidden="true"></tui-icon>
+                <span><strong>{{ getParticipantCount(order) }}</strong> People</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <tui-icon icon="shopping-bag" class="text-green-400" style="font-size: 1rem" aria-hidden="true"></tui-icon>
+                <span><strong>{{ getItemCount(order) }}</strong> Items</span>
+              </div>
+            </div>
+
+            <!-- Created Info -->
+            <div class="text-sm text-gray-400">
+              Created by <strong class="text-gray-300">{{ order.createdBy!.name }}</strong>
+              at <strong class="text-gray-300 mr-1">{{ order.createdAt|date:'shortTime' }}</strong>
+              <span class="text-gray-500">{{ dayString(order!.createdAt!) }}</span>
             </div>
           </div>
         </div>
-        <div class="flex gap-3">
-          <button class="bg-orange-600 hover:bg-orange-500 min-h-full text-white font-semibold py-2.5 px-5 rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg hover:shadow-orange-500/25 text-sm">
-            <tui-icon icon="chevron-right"></tui-icon>
-          </button>
+
+        <!-- Right: Countdown & Action -->
+        <div class="flex items-center gap-6 flex-shrink-0">
+          @if (order.closing) {
+          <app-countdown [targetDate]="order.closing"></app-countdown>
+          }
+
+          <div class="flex gap-3">
+            <button class="order-action-btn" [class.active]="isOrderActive(order)" [class.disabled]="!isOrderActive(order)" [disabled]="!isOrderActive(order)" [attr.aria-label]="isOrderActive(order) ? 'Join order for ' + order.restaurant!.name : 'Order is closed'" type="button">
+              <tui-icon icon="chevron-right" />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
-  </div>
+    </div>
+  </article>
+  }
+  }
+  }
 </div>
-}

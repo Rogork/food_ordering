@@ -1,0 +1,90 @@
+.countdown-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(251, 146, 60, 0.1);
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  text-align: center;
+  min-width: 120px;
+  transition: all 0.3s ease;
+
+  &.expired {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+}
+
+.countdown-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.label {
+  color: rgb(251, 146, 60);
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  transition: color 0.3s ease;
+}
+
+.expired .label {
+  color: rgb(239, 68, 68);
+}
+
+.countdown-tick {
+  animation: countdown-tick 2s ease-in-out infinite;
+  
+  &.expired {
+    animation: none;
+  }
+}
+
+.time-display {
+  color: rgb(251, 146, 60);
+  font-size: 1.125rem;
+  font-weight: bold;
+  transition: color 0.3s ease;
+
+  &.expired-time {
+    color: rgb(239, 68, 68);
+    font-size: 0.875rem;
+  }
+}
+
+.progress-container {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.progress-bar {
+  width: 100%;
+  background: rgba(251, 146, 60, 0.2);
+  border-radius: 9999px;
+  height: 0.25rem;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background: linear-gradient(to right, rgb(251, 146, 60), rgb(251, 113, 133));
+  height: 100%;
+  border-radius: 9999px;
+  transition: all 1s ease-in-out;
+
+  &.expired {
+    background: rgb(239, 68, 68);
+    width: 100% !important;
+  }
+}
+
+@keyframes countdown-tick {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}

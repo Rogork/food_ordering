@@ -1,21 +1,5 @@
 import { IGroup, IUser } from "../shared/auth/auth-service";
-
-const TAXRate = 0.1;
-
-export enum ETaxType {
-  Inclusive = 'I',
-  Exclusive = 'E',
-  None = 'N',
-}
-
-export interface IPrice {
-  input: number;
-  type: ETaxType;
-  base: number;
-  tax: number;
-  discount?: number;
-  total: number;
-}
+import { ETaxType, IPrice, TAXRate } from "../shared/types";
 
 export function calcIPrice(price: number = 0, taxType = ETaxType.None, discount: number = 0): IPrice {
   if (taxType === ETaxType.Inclusive) {

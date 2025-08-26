@@ -1,4 +1,4 @@
-const TAXRate = 0.1;
+export const TAXRate = 0.1;
 
 export enum ETaxType {
   Inclusive = 'I',

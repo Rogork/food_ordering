@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
-import { Observable, Observer } from 'rxjs';
+import { inject, Injectable } from '@angular/core';
+import { catchError, Observable, Observer } from 'rxjs';
 import _ from 'lodash';
+import { HttpClient, HttpContext, HttpHeaders, HttpParams } from '@angular/common/http';
 
 export type APIResponse<T = void> = {
   code: number;
@@ -14,79 +15,48 @@ export type APIResponse<T = void> = {
 
 export type APIResponseObservable<T = void> = typeof Observable<APIResponse<T>>;
 
-const BASE_URL = 'http://localhost:4200/api';
+export type RequestParamOptions = {
+  headers?: HttpHeaders | Record<string, string | string[]>;
+  context?: HttpContext;
+  params?: HttpParams | Record<string, string | number | boolean | ReadonlyArray<string | number | boolean>>;
+  reportProgress?: boolean;
+  withCredentials?: boolean;
+  credentials?: RequestCredentials;
+  keepalive?: boolean;
+  priority?: RequestPriority;
+  cache?: RequestCache;
+  mode?: RequestMode;
+  redirect?: RequestRedirect;
+  transferCache?: { includeHeaders?: string[]; } | boolean;
+  observe?: 'body';
+  responseType?: 'json';
+}
 
+const BASE_URL = 'http://localhost:4200/api';
 @Injectable({ providedIn: 'root' })
 export class APIService {
-  public requestGET<T = void>(url: string, parameters: { [key: string]: number | string | boolean } = {}, options: RequestInit = {}) {
-    return new Observable<APIResponse<T>>((observer) => {
-      options.method = 'GET';
-      let fullUrl = `${BASE_URL}${url}`;
-      if (!_.isEmpty(parameters)) {
-        fullUrl += '?' + _.map(parameters, (v, k) => `${k}=${v}`).join('&');
-      }
-      fetch(fullUrl, options)
-        .then(this.handleResponse<T>(observer))
-        .catch((err) => {
-          observer.error(err);
-          observer.complete();
-        });
-    });
-  }
 
-  public requestPOST<T = void>(url: string, body: any | FormData = {}, options: RequestInit = {}) {
-    return new Observable((observer: Observer<APIResponse<T>>) => {
-      options.method = 'POST';
-      this.processBody(options, body);
-      fetch(`${BASE_URL}${url}`, options)
-        .then(this.handleResponse(observer))
-        .catch((err) => {
-          observer.error(err);
-          observer.complete();
-        });
-    });
-  }
+  readonly httpService: HttpClient = inject(HttpClient);
 
-  public requestPUT<T = void>(url: string, body: any = {}, options: RequestInit = {}) {
-    return new Observable((observer: Observer<APIResponse<T>>) => {
-      options.method = 'PUT';
-      this.processBody(options, body);
-      fetch(`${BASE_URL}${url}`, options)
-        .then(this.handleResponse<T>(observer))
-        .catch((err) => {
-          observer.error(err);
-          observer.complete();
-        });
-    });
-  }
-
-  processBody(options: RequestInit, body: any | FormData = {}) {
-    if (body instanceof FormData) {
-      options.headers = { 'Content-Type': 'multipart/form-data;' };
-      options.body = body;
-    } else {
-      options.headers = { 'Content-Type': 'application/json' };
-      options.body = JSON.stringify(body);
+  public requestGET<T = void>(url: string, parameters: { [key: string]: number | string | boolean } = {}, options: RequestParamOptions = {}) {
+    let fullUrl = `${BASE_URL}${url}`;
+    if (!_.isEmpty(parameters)) {
+      fullUrl += '?' + _.map(parameters, (v, k) => `${k}=${v}`).join('&');
     }
+    options.observe = 'body';
+    options.responseType = 'json';
+    return this.httpService.get<APIResponse<T>>(fullUrl, options);
   }
 
-  handleResponse<T = void>(observer: Observer<APIResponse<T>>) {
-    return (response: Response) => {
-      if (!response.ok) {
-        observer.error(response.statusText);
-        observer.complete();
-        return;
-      }
-      response
-        .json()
-        .then((data: T) => {
-          observer.next(data as APIResponse<T>);
-          observer.complete();
-        })
-        .catch((err) => {
-          observer.error('Error parsing response JSON');
-          observer.complete();
-        });
-    };
+  public requestPOST<T = void>(url: string, body: any | FormData = {}, options: RequestParamOptions = {}) {
+    options.observe = 'body';
+    options.responseType = 'json';
+    return this.httpService.post<APIResponse<T>>(`${BASE_URL}${url}`, body, options);
+  }
+
+  public requestPUT<T = void>(url: string, body: any = {}, options: RequestParamOptions = {}) {
+    options.observe = 'body';
+    options.responseType = 'json';
+    return this.httpService.put<APIResponse<T>>(`${BASE_URL}${url}`, body, options);
   }
 }

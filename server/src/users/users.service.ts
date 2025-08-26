@@ -1,7 +1,7 @@
 import { PasswordHashSync } from './../shared/password-sync.func';
 import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
-import { BaseModel } from 'src/shared/base.model';
+import { BASE_VIEWS, BaseModel } from 'src/shared/base.model';
 import { BaseService } from 'src/shared/base.service';
 import crypto from 'node:crypto';
 import {
@@ -14,6 +14,7 @@ import {
 } from 'src/shared/decorators.utils';
 import { _id } from 'src/shared/helpers.func';
 import { asModelCtor, Model } from 'src/shared/meta.utils';
+import { defineViews } from 'src/shared/projections.utils';
 
 export interface IUserSession {
   sessionId: string;
@@ -24,6 +25,13 @@ export interface IUserSession {
   device?: string;
   agent?: string;
 }
+
+export const USER_VIEWS = defineViews<_UserModel>()({
+  ref: ['_id', 'name', 'email'] as const,
+  public: ['_id', 'name', 'email', 'benefitNo'] as const,
+  session: ['_id']
+});
+
 @Model({ table: 'users' })
 export class _UserModel extends BaseModel {
 
@@ -42,6 +50,9 @@ export class _UserModel extends BaseModel {
   @Property()
   @DateField()
   dob: Date;
+
+  @Property()
+  benefitNo: string;
 
   @Property()
   @Default([])
@@ -65,6 +76,8 @@ export class _UserModel extends BaseModel {
     if (idx === -1) return false;
     return this.sessions.splice(idx, 1)?.[0];
   }
+
+  views = () => USER_VIEWS;
 }
 export const UserModel = asModelCtor<_UserModel>(_UserModel);
 
@@ -88,7 +101,7 @@ export class UsersService extends BaseService<_UserModel> {
     const user = await this.findOne({ sessions: { $elemMatch: { sessionId } } });
     if (user === null) return null;
     const session = _.find(user.sessions, (session) => session.sessionId === sessionId);
-    return { user, session };
+    return { user: user.view('public'), session };
   }
 
   async emailExists(email: string) {
@@ -101,7 +114,7 @@ export class UsersService extends BaseService<_UserModel> {
     const session = user.generateSession(ext.sessionId, ext?.ip, ext?.device, ext?.agent);
     user.sessions.push(session);
     await this.create(user);
-    return { user, session };
+    return { user: _.omit(user, 'sessions'), session };
   }
 
   async signIn(email: string, password: string, ext: { sessionId: string, ip?: string, device?: string, agent?: string }) {
@@ -111,7 +124,7 @@ export class UsersService extends BaseService<_UserModel> {
     const session = user.generateSession(ext.sessionId, ext?.ip, ext?.device, ext?.agent);
     user.sessions.push(session);
     await this.update({ _id: user._id }, { $push: { sessions: session } });
-    return { user, session };
+    return { user: _.omit(user, 'sessions'), session };
   }
 
   async logout(token: string) {

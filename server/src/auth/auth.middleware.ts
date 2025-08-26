@@ -7,23 +7,21 @@ export class AuthInitMiddleware implements NestMiddleware {
     constructor(private readonly users: UsersService) { }
 
     async use(req: Request, _res: Response, next: NextFunction) {
-        if (req.session?.user === false || req.session?.userSession === false) {
+        if (req.session?.user === false || req.session?.userSession === false || (!req.headers.authorization && !req.sessionID)) {
             return next();
         }
         const auth = req.headers.authorization || '';
-        if (auth) {
-            const token = auth.replace(/^Bearer\s+/i, '').trim();
-            if (!token) return next();
-            try {
-                const details = await this.users.findUserBySessionToken(token);
-                req.session.user = details?.user ?? false;
-                req.session.userSession = details?.session ?? false;
-            } catch {
-                req.session.user = false;
-                req.session.userSession = false;
-            }
-            return next();
+        const token = auth.replace(/^Bearer\s+/i, '').trim();
+        const sessionId = req.sessionID;
+        try {
+            const details = token ? await this.users.findUserBySessionToken(token) : await this.users.findUserBySessionId(sessionId);
+            req.session.user = details?.user ? { _id: details.user._id } : false;
+            req.session.userSession = details?.session ?? false;
+        } catch (e) {
+            console.log(e);
+            req.session.user = false;
+            req.session.userSession = false;
         }
-        next();
+        return next();
     }
 }

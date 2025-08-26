@@ -26,6 +26,15 @@ export interface IUser {
   createdAt: Date;
   avatar?: string;
   role?: EUserRole;
+  groups?: Partial<IGroup>[];
+}
+
+export interface IGroup {
+  _id: string;
+  code: string;
+  name: string;
+  createdBy: string;
+  createdAt: Date;
 }
 
 @Injectable({ providedIn: "root" })

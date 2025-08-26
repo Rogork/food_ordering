@@ -4,10 +4,12 @@ import { Event, NavigationEnd, NavigationStart, Router, RouterOutlet } from '@an
 import { AuthService } from './shared/auth/auth-service';
 import { Title } from '@angular/platform-browser';
 import { TitleService } from './shared/title-service';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet, TuiRoot, TuiLoader],
+  providers: [HttpClient],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })

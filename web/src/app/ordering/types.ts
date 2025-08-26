@@ -1,4 +1,4 @@
-import { IUser } from "../shared/auth/auth-service";
+import { IGroup, IUser } from "../shared/auth/auth-service";
 
 const TAXRate = 0.1;
 
@@ -105,6 +105,7 @@ export interface IOrder {
   createdBy: Partial<IUser>;
   closing: Date;
   restaurant: Partial<IRestaurant>;
+  group: Partial<IGroup>;
   orders: IOrderItem[];
   delivery: number;
   calc?: IPrice & { amount: number };

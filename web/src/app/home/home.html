@@ -1,11 +1,11 @@
-<div class="w-full max-w-4xl m-auto">
+@for(order of orders(); track order._id) {
+<div class="w-full max-w-4xl m-auto mb-8">
 
   <div class="glass-morphism rounded-xl p-5 pulse-glow relative">
 
-    @for(order of orders(); track order._id) {
     <div class="absolute -top-5 left-4 flex-shrink-0 z-10">
       <div class="bg-blue-900 text-blue-300 px-4 py-2 rounded-full text-sm font-medium border border-blue-600">
-        Team Lunch Group
+        {{ order.group!.name }}
       </div>
     </div>
     <!-- Main Content Row -->
@@ -45,7 +45,7 @@
         </div>
       </div>
     </div>
-    }
 
   </div>
 </div>
+}

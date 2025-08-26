@@ -39,16 +39,20 @@ export class AuthController {
     @Post('register')
     @Header('Cache-Control', 'no-cache')
     public async register(@Body() user: { name?: string, email: string, password: string }, @Req() request: express.Request, @Headers() headers: Headers, @Ip() ip: string) {
-        const userData = await this.userService.register(user, this.getUserInfo(request.sessionID, headers, ip));
-        return { code: 200, data: userData };
+        const data = await this.userService.register(user, this.getUserInfo(request.sessionID, headers, ip));
+        request.session.user = data.user;
+        request.session.userSession = data.session;
+        return { code: 200, data: data };
     }
 
     @Post('login')
     @Header('Cache-Control', 'no-cache')
     public async login(@Body() { email, password }: { email: string, password: string }, @Req() request: express.Request, @Headers() headers, @Ip() ip: string) {
         try {
-            const user = await this.userService.signIn(email, password, this.getUserInfo(request.sessionID, headers, ip));
-            return { code: 200, data: user };
+            const data = await this.userService.signIn(email, password, this.getUserInfo(request.sessionID, headers, ip));
+            request.session.user = data.user;
+            request.session.userSession = data.session;
+            return { code: 200, data: data };
         } catch (e) {
             console.log(e);
             return { code: 400, msg: 'Unknown error' };
@@ -57,9 +61,12 @@ export class AuthController {
 
     @Post('logout')
     @Header('Cache-Control', 'no-cache')
-    public async logout(@Session() session) {
-        if (!session?.token) return { code: 200 };
-        await this.userService.logout(session.token);
+    public async logout(@Req() request: express.Request) {
+        const userSession = request.session?.userSession;
+        if (userSession === false || userSession === undefined) return { code: 200, msg: 'Session not found' };
+        if (!userSession.token) return { code: 200, msg: 'Token not found' };
+        await this.userService.logout(userSession.token);
+        request.session.destroy(() => { });
         return { code: 200 };
     }
 }
